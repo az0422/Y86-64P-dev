@@ -9,11 +9,7 @@ import sys
 
 SIMULATOR_VERSION = "0.1 Alpha-20211028r0"
 
-class sServer(server.server):
-    def accesslog_print(self, addr_str, header_dict):
-        pass
-
-simServer = sServer()
+simServer = server.server()
 
 class simulatorServer():
     def __init__(self, model, memsize, obj_file, serverport = 5500, serverhost = "localhost"):
@@ -27,6 +23,7 @@ class simulatorServer():
         global simServer
         simServer.setServerSettings(serverport = 5500, serverhost = serverhost, servername = "Y86-64+ Simulator")
         simServer.setApplication(self)
+        simServer.accesslog_flag = False
     
     def run(self):
         simServer.run()
@@ -64,7 +61,7 @@ class simulatorServer():
 
     @simServer.addJob("/load")
     def action_load(self, request_dict, response_dict):
-        obj_file = request_dict["body"]["obj_file"]
+        obj_file = request_dict["POST"]["obj_file"]
 
         # try read object file
         try:
@@ -74,7 +71,7 @@ class simulatorServer():
         except:
             print("ERR: %s cannot be read", (obj_file))
 
-            response_dict["result"] = "%s 400 Bad Request" % (request_dict["header"]["request"][2])
+            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
             response_dict["body"] = "Object code load error.<br>The object file(%s) could not be loaded" % (obj_file)
 
             self.simulator = None
@@ -128,7 +125,7 @@ class simulatorServer():
     # run step
     def action_step(self, request_dict, response_dict):
         if self.simulator == None:
-            response_dict["result"] = "%s 400 Bad Request" % (request_dict["header"]["request"][2])
+            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
             response_dict["body"] = "Step run error.<br>The simulator is not initialized."
             response_dict["Content-Length"] = str(len(response_dict["body"]))
 
@@ -147,7 +144,7 @@ class simulatorServer():
     @simServer.addJob("/run")
     def action_run(self, request_dict, response_dict):
         if self.simulator == None:
-            response_dict["result"] = "%s 400 Bad Request" % (request_dict["header"]["request"][2])
+            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
             response_dict["body"] = "Run error.<br>The simulator is not initialized. "
             response_dict["Content-Length"] = str(len(response_dict["body"]))
 

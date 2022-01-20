@@ -1,7 +1,5 @@
 # -*- encoding:UTF-8 -*-
 import socket
-import zlib
-import base64
 
 class server():
     def __init__(self, serverport = 80, servername = "Python Socket Server", serverhost = "localhost"):
@@ -11,6 +9,8 @@ class server():
         self.shutdownFlag = False
         self.jobs = { }
         self.application = None
+        
+        self.accesslog_flag = True
     
     def setServerSettings(self, serverport = 80, servername = "Python Socket Server", serverhost = "localhost"):
         self.serverport = serverport
@@ -28,7 +28,7 @@ class server():
 
     # 404 Not Found
     def NotFound(self, request_dict, response_dict):
-        response_dict["result"] = "%s 404 NOT FOUND" % (request_dict["header"]["request"][2])
+        response_dict["result"] = "%s 404 NOT FOUND" % (request_dict["RAW"]["request"])
         response_dict["body"] = "404 NOT FOUND"
 
         return response_dict
@@ -39,49 +39,56 @@ class server():
 
     # console log
     def accesslog_print(self, addr_str, request_dict):
-        print("%s - %s" % (addr_str, request_dict["header"]["request"]))
+        if self.accesslog_flag:
+            print("%s - %s" % (addr_str, "%s, %s, %s" % (request_dict["mathod"], request_dict["path"], request_dict[""])))
 
     # request message to dictionary
     def requestToDict(self, request_str):
-        request_split = request_str.split("\r\n")
-        request_dict = { "header": {}, "body": {} }
-        blink_flag = False
-
-        request_dict["header"] = { "request": request_split[0].split(" ") }
+        header_str, data_str = request_str.split("\r\n\r\n")
+        header_list = header_str.split("\r\n")
         
-        # GET method
-        if request_dict["header"]["request"][0] == "GET": 
-            query = request_dict["header"]["request"][1].split("?")
-            request_dict["header"]["request"][1] = query[0]
+        method, path, httpv = header_list[0].split(" ")
+        
+        # header
+        header_dict = {}
+        
+        for record in header_list[1:]:
+            key, data = record.split(": ")
+            header_dict[key] = data
+        
+        # GET data
+        get_data_dict = {}
+        get_data_str = ""
+        
+        if path.find("?") + 1:
+            path, get_data_str = path.split("?")
             
-            if len(query) == 2:
-                for record in query[1].split("&"):
-                    (key, value) = record.split("=")
-                    
-                    request_dict["body"][key] = value
+            for record in get_data_str.split("&"):
+                if record.find("=") + 1:
+                    key, data = record.split("=")
+                    get_data_dict[key] = data
+                else:
+                    get_data_dict[record] = True
         
-        # message to dictionary
-        for str in request_split[1:]:
-            str = str.strip()
-
-            if str == "":
-                blink_flag = True
-                continue
-
-            # body
-            if blink_flag:
-                body_list = str.split("&")
-                
-                for record in body_list:
-                    (key, value) = record.split("=")
-                    request_dict["body"][key.strip()] = value.strip()
-                
-            # header
-            else:
-                header_split = str.split(":")
-                request_dict["header"][header_split[0].strip()] = header_split[1].strip()
+        # POST data
+        post_data_dict = {}
         
-        return request_dict
+        if method == "POST" and data_str:
+            if header_dict["Content-Type"] == "application/x-www-form-urlencoded":
+                for record in data_str.split("&"):
+                    if record.find("="):
+                        key, data = record.split("=")
+                        post_data_dict[key] = data
+                    else:
+                        post_data_dict[record] = True
+                        
+            elif header_dict["Content-Type"] == "text/plan":
+                post_data_dict["RAW"] = data_str
+                
+            # elif header_dict["Content-Type] == "multipart/form-data"
+        
+        return { "method": method, "path": path, "httpv": httpv, "RAW": { "GET": get_data_str, "POST": data_str, "request": header_list[0] },
+                 "GET": get_data_dict, "POST": post_data_dict }
     
     # response dictionary to response message
     def responseDictToMessage(self, response_dict):
@@ -126,23 +133,23 @@ class server():
             request_dict = self.requestToDict(request_str)
 
             # make default response dictionary
-            response_dict = { "result": "%s 200 OK" % (request_dict["header"]["request"][2]), "Server": self.servername,
+            response_dict = { "result": "%s 200 OK" % (request_dict["httpv"]), "Server": self.servername,
                               "Last-Modified": "Thu, 1 Jan 1970 00:00:00 GMT", "Content-Type": "text/html",
-                              "Content-Length": "0", "Cache-Control": "no-store", "body": ""}
+                              "Content-Length": "0", "Cache-Control": "no-store", "body": "" }
 
             # print log
             self.accesslog_print(addr[0], request_dict)
 
             # work and make message
-            if request_dict["header"]["request"][1] in self.jobs.keys():
+            if request_dict["path"] in self.jobs.keys():
                 if self.application:
-                    response_dict = self.jobs[request_dict["header"]["request"][1]](self.application, request_dict, response_dict)
+                    response_dict = self.jobs[request_dict["path"]](self.application, request_dict, response_dict)
                 else:
-                    response_dict = self.jobs[request_dict["header"]["request"][1]](request_dict, response_dict)
+                    response_dict = self.jobs[request_dict["path"]](request_dict, response_dict)
 
             # not found
             else:
-                response_dict["result"] = "%s 404 OK" % (request_dict["header"]["request"][2])
+                response_dict["result"] = "%s 404 OK" % (request_dict["httpv"])
                 response_dict["body"] = "404 NOT FOUND"
             
             # count length

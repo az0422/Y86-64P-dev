@@ -250,6 +250,7 @@
                     }
 
                     xhr.open("POST", "/load", true);
+                    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded")
                     xhr.send("obj_file=" + filepath);
                 }
 
