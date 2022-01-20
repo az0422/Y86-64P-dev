@@ -84,8 +84,29 @@ class server():
                         
             elif header_dict["Content-Type"] == "text/plan":
                 post_data_dict["RAW"] = data_str
-                
-            # elif header_dict["Content-Type] == "multipart/form-data"
+            
+            elif header_dict["Content-Type"].startswith("multipart/form-data"):
+                boundary = header_dict["Content-Type"].split("; ")[1].split("=")[1]
+            
+                for item in data_str.split(boundary)[-1]:
+                    item_header, item_data = item.split("\r\n\r\n")
+                    item_name = ""
+                    item_type = ""
+                    
+                    for record in item_header.split("\r\n"):
+                        key, data = record.split(": ")
+                        
+                        if key == "Content-Disposition":
+                            data_list = data.split("; ")[1]
+                            
+                            for sub_r in data_list:
+                                if sub_r.startswith("name"):
+                                    item_name = sub_r.split("=")[1]
+                        
+                        if key == "Content-Type":
+                            item_type = data
+                    
+                    post_data_dict[item_name] = { "Content-Type": item_type, "data": item_data }
         
         return { "method": method, "path": path, "httpv": httpv, "RAW": { "GET": get_data_str, "POST": data_str, "request": header_list[0] },
                  "GET": get_data_dict, "POST": post_data_dict }
