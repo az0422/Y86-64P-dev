@@ -1,0 +1,4 @@
+	irmovq $-16,%rax
+	irmovq $6,%rsi
+	sar %rsi,%rax
+	halt

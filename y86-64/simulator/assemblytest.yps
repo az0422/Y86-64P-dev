@@ -1,0 +1,45 @@
+	irmovq stack,%rsp
+	call main
+	halt
+	
+	.align 8
+	.elemrkq 4
+data:
+	.quad 0x1
+	.quad 0x2
+	.quad 0x3
+	.quad 0x4
+
+main:
+	rrmovq %rax,%rcx
+	cmovle %rdx,%rbx
+	cmovl %rsp,%rbp
+	cmove %rsi,%rdi
+	cmovne %rdi,%r8
+	cmovge %r9,%r10
+	cmovg %r11,%r12
+	rmmovq %r13,data(%null)
+	mrmovq data(%null),%r14
+	addq %null,%rax
+	subq %rcx,%rdx
+	xorq %rbx,%rsp
+	or %rbp,%rsi
+	shl %rdi,%r8
+	shr %r9,%r10
+	sar %r11,%r12
+	cmp %r13,%r14
+	test %null,%rax
+	not %null,%rax
+	jmp main
+	jle main
+	jl main
+	je main
+	jne main
+	jge main
+	jg main
+	pushq %rax
+	popq %rax
+	ret
+
+	.dummy 0x20
+stack:
