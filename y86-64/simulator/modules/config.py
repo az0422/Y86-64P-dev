@@ -56,6 +56,5 @@ class config():
 				for key in config[section].keys():
 					configdata[section][key] = config[section][key]
 		
-
 		return configdata
 	

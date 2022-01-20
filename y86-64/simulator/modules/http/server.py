@@ -40,7 +40,7 @@ class server():
     # console log
     def accesslog_print(self, addr_str, request_dict):
         if self.accesslog_flag:
-            print("%s - %s" % (addr_str, "%s, %s, %s" % (request_dict["mathod"], request_dict["path"], request_dict[""])))
+            print("ACCESS: %s - %s" % (addr_str, request_dict["RAW"]["request"]))
 
     # request message to dictionary
     def requestToDict(self, request_str):
@@ -67,6 +67,7 @@ class server():
                 if record.find("=") + 1:
                     key, data = record.split("=")
                     get_data_dict[key] = data
+                    
                 else:
                     get_data_dict[record] = True
         
@@ -74,17 +75,21 @@ class server():
         post_data_dict = {}
         
         if method == "POST" and data_str:
+            # form data
             if header_dict["Content-Type"] == "application/x-www-form-urlencoded":
                 for record in data_str.split("&"):
                     if record.find("="):
                         key, data = record.split("=")
                         post_data_dict[key] = data
+                        
                     else:
                         post_data_dict[record] = True
-                        
+            
+            # plan data
             elif header_dict["Content-Type"] == "text/plan":
                 post_data_dict["RAW"] = data_str
             
+            # multipart data
             elif header_dict["Content-Type"].startswith("multipart/form-data"):
                 boundary = header_dict["Content-Type"].split("; ")[1].split("=")[1]
             
@@ -186,4 +191,3 @@ class server():
             if self.shutdownFlag:
                 server.close()
                 break
-

@@ -23,7 +23,7 @@ class simulatorServer():
         global simServer
         simServer.setServerSettings(serverport = 5500, serverhost = serverhost, servername = "Y86-64+ Simulator")
         simServer.setApplication(self)
-        simServer.accesslog_flag = False
+        #simServer.accesslog_flag = False
     
     def run(self):
         simServer.run()
@@ -35,9 +35,37 @@ class simulatorServer():
 
         # load and make simulator display
         simulator_body = open("./view/main.html", "r", encoding = "UTF-8").read().replace("    ", "").replace("\t", "")
-        simulator_model = open("./view/%s-model.html" % (self.model), "r", encoding = "UTF-8").read().replace("    ", "").replace("\t", "")
-        simulator_script = open("./view/%s-model.js" % (self.model), "r", encoding = "UTF-8").read().replace("    ", "").replace("\t", "")
+        #simulator_model = open("./view/%s-model.html" % (self.model), "r", encoding = "UTF-8").read().replace("    ", "").replace("\t", "")
+        #simulator_script = open("./view/%s-model.js" % (self.model), "r", encoding = "UTF-8").read().replace("    ", "").replace("\t", "")
 
+        #memory_init_str = ""
+
+        #for i in range(self.memsize):
+        #    if i & 7 == 0:
+        #        memory_init_str += "\n&nbsp;%06X: " % (i)
+        #    
+        #    memory_init_str += "00"
+        #
+        #memory_init_str = memory_init_str[1:].replace("\n", "&nbsp;<br>\n")
+
+        #response_body = simulator_body.replace("%cpu-model%", simulator_model)
+        #response_body = response_body.replace("%model-script%", simulator_script)
+        #response_body = response_body.replace("%file-path%", self.obj_file)
+        response_body = simulator_body.replace("%simulator-version%", SIMULATOR_VERSION)
+        #response_body = response_body.replace("%model-name%", self.model)
+        #response_body = response_body.replace("%memory%", memory_init_str)
+    
+        response_dict["body"] = response_body
+        
+        return response_dict
+    
+    @simServer.addJob("/start")
+    def action_selectMode(self, request_dict, response_dict):
+        self.memsize = int(request_dict["POST"]["memsize"])
+        self.model = request_dict["POST"]["model"]
+        
+        print(request_dict)
+        
         memory_init_str = ""
 
         for i in range(self.memsize):
@@ -47,18 +75,16 @@ class simulatorServer():
             memory_init_str += "00"
         
         memory_init_str = memory_init_str[1:].replace("\n", "&nbsp;<br>\n")
-
-        response_body = simulator_body.replace("%cpu-model%", simulator_model)
-        response_body = response_body.replace("%model-script%", simulator_script)
-        response_body = response_body.replace("%file-path%", self.obj_file)
-        response_body = response_body.replace("%simulator-version%", SIMULATOR_VERSION)
-        response_body = response_body.replace("%model-name%", self.model)
-        response_body = response_body.replace("%memory%", memory_init_str)
-    
-        response_dict["body"] = response_body
+        
+        model_html = open("./view/%s-model.html" % (self.model)).read()
+        model_js = open("./view/%s-model.js" % self.model).read()
+        
+        response_dict["body"] = json.dumps({ "memory": memory_init_str, "model_html": model_html, "model_js": model_js })
+        response_dict["Content-Type"] = "text/json"
         
         return response_dict
 
+    
     @simServer.addJob("/load")
     def action_load(self, request_dict, response_dict):
         obj_file = request_dict["POST"]["obj_file"]
