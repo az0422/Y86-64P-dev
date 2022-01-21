@@ -7,7 +7,7 @@ from modules.assembler import disassembly
 from modules.cpu import seq, pipe
 from modules.http import server
 
-SIMULATOR_VERSION = "0.1 Alpha-20220121r0"
+SIMULATOR_VERSION = "0.1 Alpha-20220121r1"
 
 simServer = server.server()
 
@@ -48,7 +48,7 @@ class simulatorServer():
         id = "%02X-%02X-%02X-%02X" % (id >> 24 & 0xFF, id >> 16 & 0xFF, id >> 8 & 0xFF, id & 0xFF)
         
         self.simulators[id] = {
-            "memsize": memsize, "model": model, "dsmflag": True, "dsmdict": {}, "sim": None
+            "memsize": memsize, "model": model, "dsmflag": True, "dsmdict": {}, "sim": None, "snapshot": {}
         }
         
         memory_init_str = ""
@@ -72,7 +72,38 @@ class simulatorServer():
         response_dict["Content-Type"] = "text/json"
         
         return response_dict
-
+    
+    # restart session
+    @simServer.addJob("/restart")
+    def action_restart(self, request_dict, response_dict):
+        id = request_dict["POST"]["sim_id"]
+        model = ""
+        
+        if id not in self.simulators.keys():
+            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
+            response_dict["body"] = "ID(%s) does NOT exist." % id
+            
+            return response_dict
+        
+        model = self.simulators[id]["model"]
+        model_html = open("./view/%s-model.html" % (model), "r", encoding = "UTF-8").read()
+        
+        response_dict["body"] = json.dumps({ "model_html": model_html, "model_name": model })
+        
+        return response_dict
+    
+    # restore session
+    @simServer.addJob("/restore")
+    def action_restart(self, request_dict, response_dict):
+        id = request_dict["POST"]["sim_id"]
+        
+        if self.simulators[id]["snapshot"]:
+            response_dict["body"] = self.resultDictToJSON(self.simulators[id]["snapshot"], id)
+            return response_dict
+        else:
+            response_dict["result"] = "%s 404 Not Found" % (request_dict["httpv"])
+            response_dict["body"] = "snapshot is not found"
+            return response_dict
     
     @simServer.addJob("/load")
     def action_load(self, request_dict, response_dict):
@@ -131,6 +162,7 @@ class simulatorServer():
 
         # make JSON
         response_body = self.resultDictToJSON({}, id)
+        self.simulators[id]["snapshot"] = {}
 
         response_dict["body"] = response_body
         response_dict["Content-Type"] = "text/json"
@@ -152,6 +184,7 @@ class simulatorServer():
         
         # make JSON
         response_body = self.resultDictToJSON(simulator_dict, id)
+        self.simulators[id]["snapshot"] = simulator_dict
         
         response_dict["body"] = response_body
         response_dict["Content-Type"] = "text/json"
@@ -181,6 +214,7 @@ class simulatorServer():
                 simulator_dict = self.simulators[id]["sim"].run()
 
         response_body = self.resultDictToJSON(simulator_dict, id)
+        self.simulators[id]["snapshot"] = simulator_dict
 
         response_dict["Content-Type"] = "text/json"
         response_dict["body"] = response_body
@@ -236,7 +270,9 @@ class simulatorServer():
                     in_dict[mnkey][mkey] = in_dict_orig[mnkey][mkey]
         
         if self.simulators[id]["model"] == "pipe":
-            pc_list = [ in_dict["fetch"]["npct"], in_dict["decode"]["npct"], in_dict["alu"]["npct"], in_dict["memory"]["npct"], in_dict["wb"]["npct"] ]
+            pc_list = [ in_dict["fetch"]["npct"], in_dict["decode"]["npct"],
+                        in_dict["alu"]["npct"], in_dict["memory"]["npct"],
+                        in_dict["wb"]["npct"] ]
         
         elif self.simulators[id]["model"] == "seq":
             pc_list = [self.simulators[id]["sim"].nowPC]
@@ -270,7 +306,8 @@ class simulatorServer():
         alucc = in_dict["alu"]["ALUCC"]
         decc = in_dict["decode"]["DECC"]
         in_dict["fetch"]["buff"] = fetch_buff
-        in_dict["alu"]["ALUCC"] = "%02X (ZF: %d, SF: %d, OF: %d, eql: %d, grt: %d, les: %d)" % (alucc, alucc >> 5, alucc >> 4 & 1, alucc >> 3 & 1, alucc >> 2 & 1, alucc >> 1 & 1, alucc & 1)
+        in_dict["alu"]["ALUCC"] = "%02X (ZF: %d, SF: %d, OF: %d, eql: %d, grt: %d, les: %d)" % (alucc, alucc >> 5, alucc >> 4 & 1,
+                                                                                                alucc >> 3 & 1, alucc >> 2 & 1, alucc >> 1 & 1, alucc & 1)
         in_dict["alu"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
         in_dict["decode"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
         
