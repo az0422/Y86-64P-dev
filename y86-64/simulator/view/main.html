@@ -253,6 +253,7 @@
             var REGISTERS = ["%rax", "%rcx", "%rdx", "%rbx", "%rsp", "%rbp", "%rsi", "%rdi", "%r8", "%r9", "%r10", "%r11", "%12", "%r13", "%r14", "%null", "PC", "const"];
             var simulator_model = "";
             var simulator_id = "";
+            var aliveInterval;
 			
             function model_script_func(response_obj) {
             	if (simulator_model == "sequential") {
@@ -295,7 +296,9 @@
 
                     document.getElementById("cover").style.display = "block";
                     document.getElementById("ERROR").style.display = "block";
-
+					
+                    clearInterval(aliveInterval);
+                    
                     return;
                     break;
                 }
@@ -324,7 +327,6 @@
             	
             	if (isNaN(memsize)) {
             		ErrorPrint("Memory size is NaN");
-                    
                     return;
             	}
             	
@@ -354,17 +356,14 @@
             		simulator_model = response_obj.model_name;
             		simulator_id = response_obj.sim_id;
             	}
+            	
+            	aliveIntervalStart();
            	}
            	
             
             function restartSimulator() {
             	var xhr = new XMLHttpRequest();
-            	var id = "";
-            	
-            	for (var i = 1; i < 4; i++) {
-            		id += document.getElementById("sim-id-" + i).value + "-";
-            	}
-            	id += document.getElementById("sim-id-4").value;
+            	var id = document.getElementById("start-sim-id").value;
             	
             	xhr.open("POST", "/restart", true);
             	xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -402,6 +401,8 @@
             			ErrorPrint(xhr.responseText);
             		}
             	}
+            	
+            	aliveIntervalStart();
             }
 
             function dataUpdate(response_obj) {
@@ -458,6 +459,15 @@
                 setTimeout(function(){
                     document.getElementById("ERROR").style.display = "none";
                 }, 2000)
+            }
+            
+            function aliveIntervalStart() {
+            	aliveInterval = setInterval(function(){
+            		var lifeRefresh = new XMLHttpRequest();
+            		lifeRefresh.open("POST", "/alive", true);
+            		lifeRefresh.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            		lifeRefresh.send("sim_id=" + simulator_id);
+            	}, 5 * 60 * 1000);
             }
         </script>
     </head>
@@ -638,7 +648,7 @@
         <div class="version">
             version: %simulator-version%<br>
             model: <span id="info-model-name"></span><br>
-            simulator ID: <span id="info-simulator-id"></span>
+            simulator UUID: <span id="info-simulator-id"></span>
         </div>
 
         <div id="settings">
@@ -675,12 +685,9 @@
 		       	</div>
 		       	<div id="start-load-display" style="grid-row:2; grid-column:1; display:none">
 			       	<div style="display:grid; grid-row-gap:1em; padding: 0 1em 1em 1em; width:23em; text-align:center">
-			       		<div style="grid-row:1; grid-column:1">Enter the simulator ID</div>
+			       		<div style="grid-row:1; grid-column:1">Enter the simulator UUID</div>
 			       		<div style="grid-row:2; grid-column:1">
-			       			<input type="number" size="4" id="sim-id-1" /> - 
-			       			<input type="number" size="4" id="sim-id-2" /> - 
-			       			<input type="number" size="4" id="sim-id-3" /> - 
-			       			<input type="number" size="4" id="sim-id-4" />
+			       			<input type="text" size="36" id="start-sim-id" />
 			       		</div>
 			       		
 			       		<div style="grid-row:3; grid-column:1; text-align:center">

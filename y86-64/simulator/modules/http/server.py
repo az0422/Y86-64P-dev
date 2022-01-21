@@ -164,7 +164,6 @@ class server():
 
             # print log
             self.accesslog_print(addr[0], request_dict)
-
             # work and make message
             if request_dict["path"] in self.jobs.keys():
                 if self.application:
@@ -174,7 +173,7 @@ class server():
 
             # not found
             else:
-                response_dict["result"] = "%s 404 OK" % (request_dict["httpv"])
+                response_dict["result"] = "%s 404 Not Found" % (request_dict["httpv"])
                 response_dict["body"] = "404 NOT FOUND"
             
             # count length

@@ -2,26 +2,31 @@
 
 import json
 import sys
+import uuid
+import threading
+import time
 
 from modules.assembler import disassembly
 from modules.cpu import seq, pipe
 from modules.http import server
 
-SIMULATOR_VERSION = "0.1 Alpha-20220121r2"
+SIMULATOR_VERSION = "0.1 Alpha-20220121r3"
 
 simServer = server.server()
 
 class simulatorServer():
     def __init__(self, serverport = 5500, serverhost = "localhost"):
         self.simulators = {}
-        self.id_sequence = 0
 
         global simServer
         simServer.setServerSettings(serverport = 5500, serverhost = serverhost, servername = "Y86-64+ Simulator")
         simServer.setApplication(self)
         #simServer.accesslog_flag = False
+        
+        self.aliveChecker = checkAliveThread(self.simulators)
     
     def run(self):
+        self.aliveChecker.start()
         simServer.run()
     
     @simServer.addJob("/")
@@ -42,13 +47,10 @@ class simulatorServer():
         memsize = int(request_dict["POST"]["memsize"])
         model = request_dict["POST"]["model"]
         
-        id = self.id_sequence
-        self.id_sequence += 1
-        
-        id = "%02X-%02X-%02X-%02X" % (id >> 24 & 0xFF, id >> 16 & 0xFF, id >> 8 & 0xFF, id & 0xFF)
+        id = str(uuid.uuid4())
         
         self.simulators[id] = {
-            "memsize": memsize, "model": model, "dsmflag": True, "dsmdict": {}, "sim": None, "snapshot": {}
+            "memsize": memsize, "model": model, "life": 35, "dsmflag": True, "dsmdict": {}, "sim": None, "snapshot": {}
         }
         
         memory_init_str = ""
@@ -104,6 +106,15 @@ class simulatorServer():
             response_dict["result"] = "%s 404 Not Found" % (request_dict["httpv"])
             response_dict["body"] = "snapshot is not found"
             return response_dict
+    
+    # life refresh
+    @simServer.addJob("/alive")
+    def action_alive(self, request_dict, response_dict):
+        id = request_dict["POST"]["sim_id"]
+        
+        self.simulators[id]["life"] += 5
+        
+        return response_dict
     
     @simServer.addJob("/load")
     def action_load(self, request_dict, response_dict):
@@ -221,6 +232,7 @@ class simulatorServer():
     @simServer.addJob("/shutdown")
     def action_shutdown(self, request_dict, response_dict):
         simServer.shutdownFlag = True
+        self.aliveChecker.shutdown()
 
         response_dict["body"] = "Simulator has been terminated."
         return response_dict
@@ -404,3 +416,27 @@ class simulatorServer():
             str_list.append("<br>")
         
         return "".join(str_list)
+
+# killer
+class checkAliveThread(threading.Thread):
+    def __init__(self, simulators):
+        super().__init__()
+        self.simulators = simulators
+        self.shutdown_flag = False
+    
+    def run(self):
+        while True:
+            for id in self.simulators.keys():
+                if self.simulators[id]["life"] <= 0:
+                    del self.simulators[id]
+                else:
+                    self.simulators[id]["life"] -= 1
+                
+            for i in range(12):
+                time.sleep(5)
+                
+                if self.shutdown_flag:
+                    return
+    
+    def shutdown(self):
+        self.shutdown_flag = True
