@@ -86,7 +86,7 @@ class server():
                         post_data_dict[record] = True
             
             # plan data
-            elif header_dict["Content-Type"] == "text/plan":
+            elif header_dict["Content-Type"] == "text/plain":
                 post_data_dict["RAW"] = data_str
             
             # multipart data
@@ -118,7 +118,6 @@ class server():
     
     # response dictionary to response message
     def responseDictToMessage(self, response_dict):
-
         # result and body
         result = "%s\r\n" % (response_dict["result"])
         body = "%s\r\n" % (response_dict["body"])

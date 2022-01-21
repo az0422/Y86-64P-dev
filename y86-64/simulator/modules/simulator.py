@@ -7,7 +7,7 @@ from modules.assembler import disassembly
 from modules.cpu import seq, pipe
 from modules.http import server
 
-SIMULATOR_VERSION = "0.1 Alpha-20220121r1"
+SIMULATOR_VERSION = "0.1 Alpha-20220121r2"
 
 simServer = server.server()
 
@@ -156,9 +156,6 @@ class simulatorServer():
             assembly_str = "The assembly code was not provided because an error occurred during disassembly."
 
             self.simulators[id]["dsmflag"] = False
-
-        # make memory to string
-        #memory_str = self.memoryArrToStr(0, 0, [0, 0])
 
         # make JSON
         response_body = self.resultDictToJSON({}, id)
@@ -346,17 +343,17 @@ class simulatorServer():
         if self.simulators[id]["dsmflag"] == False:
             return "The assembly code was not provided because an error occurred during disassembly."
 
-        result = ""
+        result_list = []
         keys_list = list(self.simulators[id]["dsmdict"].keys())
         keys_list.sort()
 
         if self.simulators[id]["model"] == "seq":
             for key in keys_list:
                 if (key == pc_list[0]):
-                    result += "<div class=\"run_seq\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, self.simulators[id]["dsmdict"][key])
+                    result_list.append("<div class=\"run_seq\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, self.simulators[id]["dsmdict"][key]))
                 
                 else:
-                    result += "<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, self.simulators[id]["dsmdict"][key])
+                    result_list.append("<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, self.simulators[id]["dsmdict"][key]))
         
         elif self.simulators[id]["model"] == "pipe":
             i = 0
@@ -370,22 +367,20 @@ class simulatorServer():
                         if key == pc_list[i]:
                             css = css_list[i]
                     
-                    result += "<div class=\"%s\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (css, key, self.simulators[id]["dsmdict"][key])
+                    result_list.append("<div class=\"%s\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (css, key, self.simulators[id]["dsmdict"][key]))
                 
                 else:
-                    result += "<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, self.simulators[id]["dsmdict"][key])
+                    result_list.append("<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, self.simulators[id]["dsmdict"][key]))
 
-        return result
+        return "".join(result_list)
     
     def memoryArrToStr(self, rsp, rbp, mem_info, id):
         memory_str = ""
         str_list = []
 
         for i in range(len(self.simulators[id]["sim"].memory) >> 3):
-            mem_str = ""
-            
-            for j in range(8):
-                mem_str += "%02X" % (self.simulators[id]["sim"].memory[(i << 3) + j])
+            mem_str = "".join(["%02X" % (self.simulators[id]["sim"].memory[(i << 3) + j]) for j in range(8)])
+
                 
             str_list.append("")
             str_list[-1] = "&nbsp;%06X: %s&nbsp;" % (i << 3, mem_str)
@@ -405,8 +400,7 @@ class simulatorServer():
             # stack base point
             if rbp >> 3 == i:
                 str_list[-1] = "<span class=\"rbp_point\"> %s RBP&nbsp;</span>" % (str_list[-1])
-                
-        for str in str_list:
-            memory_str += str + "<br>"
+            
+            str_list.append("<br>")
         
-        return memory_str
+        return "".join(str_list)
