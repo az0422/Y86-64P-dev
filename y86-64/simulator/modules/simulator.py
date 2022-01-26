@@ -13,6 +13,7 @@ from modules.http import server
 SIMULATOR_VERSION = "0.1 Alpha-20220121r3"
 
 simServer = server.server()
+lock = threading.Lock()
 
 class simulatorServer():
     def __init__(self, serverport = 5500, serverhost = "localhost"):
@@ -49,9 +50,11 @@ class simulatorServer():
         
         id = str(uuid.uuid4())
         
+        lock.acquire()
         self.simulators[id] = {
             "memsize": memsize, "model": model, "life": 35, "dsmflag": True, "dsmdict": {}, "sim": None, "snapshot": {}
         }
+        lock.release()
         
         memory_init_str = ""
 
@@ -235,6 +238,39 @@ class simulatorServer():
         self.aliveChecker.shutdown()
 
         response_dict["body"] = "Simulator has been terminated."
+        return response_dict
+    
+    @simServer.addJob("/manager")
+    def action_manager(self, request_dict, response_dict):
+        result_list = []
+        
+        lock.acquire()
+        id_list = self.simulators.keys()
+        lock.release()
+        
+        for id in id_list:
+            try:
+                memsize = self.simulators[id]["memsize"]
+                model = self.simulators[id]["model"]
+                life = self.simulators[id]["life"]
+                
+                if memsize >> 40:
+                    memsize = str(memsize >> 40) + "TB"
+                elif memsize >> 30:
+                    memsize = str(memsize >> 30) + "GB"
+                elif memsize >> 20:
+                    memsize = str(memsize >> 20) + "MB"
+                elif memsize >> 10:
+                    memsize = str(memsize >> 10) + "KB"
+                else:
+                    memsize = str(memsize) + "B"
+                
+                result_list.append({ "uuid": id, "memsize": memsize, "model": { "seq": "Sequential", "pipe": "Pipeline" }[model], "life": str(life) })
+            except:
+                print("INFO: ID " + id + " was already closed")
+        
+        response_dict["body"] = json.dumps({ "data": result_list })
+        
         return response_dict
 
     def resultDictToJSON(self, in_dict_orig, id):
@@ -426,11 +462,18 @@ class checkAliveThread(threading.Thread):
     
     def run(self):
         while True:
-            for id in self.simulators.keys():
-                if self.simulators[id]["life"] <= 0:
-                    del self.simulators[id]
-                else:
-                    self.simulators[id]["life"] -= 1
+            lock.acquire()
+            id_list = list(self.simulators.keys())
+            lock.release()
+            
+            for id in id_list:
+                try:
+                    if self.simulators[id]["life"] <= 0:
+                        del self.simulators[id]
+                    else:
+                        self.simulators[id]["life"] -= 1
+                except:
+                    print("INFO: ID " + id + " was already closed")
                 
             for i in range(12):
                 time.sleep(5)

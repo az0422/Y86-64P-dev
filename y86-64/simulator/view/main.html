@@ -18,10 +18,6 @@
             }
 
             .top {
-                display: grid;
-                grid-template-rows: repeat(3, 1);
-                grid-template-columns: repeat(2, 1fr);
-
                 background-color: #286B7B;
                 color:#fff;
 
@@ -32,9 +28,6 @@
             }
 
             .title {
-                grid-row: 1;
-                grid-column: 1;
-                
                 font-size: 0.89em;
                 color: #E0EEF7;
             }
@@ -49,43 +42,10 @@
             }
 
             .control {
-                grid-row: 2;
-                grid-column: 1;
-
-                display: grid;
-                grid-template-columns: repeat(4, 1);
-
-                font-size: 1.5em;
-
-                user-select:none;
-            }
-
-            .file-in {
-                grid-row: 3;
-                grid-column: 1 / span 2;
-
-                display: grid;
-                grid-template-rows: repeat(1, 1);
-                grid-template-columns: repeat(2, 1);
-            }
-            
-            .file-in > input {
-                grid-row: 1;
-                grid-column: 1;
-            }
-
-            .file-in > div {
-                grid-row: 1;
-                grid-column: 2;
-                padding-left: 1em;
                 user-select:none;
             }
 
             .main {
-                display: grid;
-                grid-template-rows: 1.5em 50% 1.5em 4.5em 1.5em 1fr;
-                grid-template-columns: 2fr 3fr 20em;
-
                 margin-left: 0.25em;
                 margin-right: 0.25em;
 
@@ -473,24 +433,24 @@
     </head>
     <body>
         <!-- Header -->
-        <div class="top">
-            <div class="title">
+        <div class="top" style="display:grid; grid-template-columns:1fr 1fr">
+            <div class="title" style="grid-row:1; grid-column:1">
                 Y86-64+ Simulator
             </div>
-            <div class="control">
+            <div class="control" style="grid-row:2; grid-column:1; display:grid; grid-template-columns:1 1 1 1; font-size:1.5em">
                 <div onclick="simulatorActions(1)" style="grid-row:1; grid-column:1"> Reset &orarr; </div>
                 <div onclick="simulatorActions(2)" style="grid-row:1; grid-column:2"> Run &raquo; </div>
                 <div onclick="simulatorActions(3)" style="grid-row:1; grid-column:3"> Step &rtrif; </div>
                 <div onclick="simulatorActions(4)" style="grid-row:1; grid-column:4"> Shutdown &FilledSmallSquare;</div>
             </div>
-            <div class="file-in">
-                <input id="file-path" placeholder="object file(example: /filepath/example.ypo)" onkeypress="javascript:if(event.keyCode == 13) { simulatorActions(0); }" />
-                <div onclick="simulatorActions(0)"> Load </div>
+            <div style="grid-row:3; grid-column:1 / span 2; display:grid; grid-template-columns:1 1;">
+                <input id="file-path" style="grid-row:1; grid-column:1" placeholder="object file(example: /filepath/example.ypo)" onkeypress="javascript:if(event.keyCode == 13) { simulatorActions(0); }" />
+                <div class="control" style="grid-row:1; grid-column:2; padding-left:1em;" onclick="simulatorActions(0)"> Load </div>
             </div>
         </div>
 
         <!-- Body -->
-        <div class="main">
+        <div class="main" style="display:grid; grid-template-rows:1.5em 50% 1.5em 4.5em 1.5em 1fr; grid-template-columns:2fr 3fr 20em;">
 
             <!-- object code -->
             <div style="grid-row:1; grid-column: 1">

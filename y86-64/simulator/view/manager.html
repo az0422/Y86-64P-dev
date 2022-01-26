@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400&display=swap" rel="stylesheet">
+		
+		<title> Session Manager </title>
+		<style>
+			* {
+				margin: 0;
+			}
+			.top {
+                background-color: #286B7B;
+                color:#fff;
+
+                padding-top: 0.5em;
+                padding-bottom: 0.25em;
+                padding-left: 1em;
+                padding-right: 1em;
+            }
+		</style>
+	</head>
+	<body>
+		<div class="top" style="display:grid; grid-template-columns:1fr 1fr">
+			<div style="grid-row:1; grid-column:1; font-size:0.89em">
+				Y86-64+ Simulator - Manager Page -
+			</div>
+			<div style="grid-row:2; grid-column:1; display:grid; grid-template-columns:1 1 1; font-size:1.25em; padding-top:0.25em; padding-bottom:0.25em">
+				<div style="grid-row:1; grid-column:1"> Close All &xotime;</div>
+				<div style="grid-row:1; grid-column:2"> Refresh &orarr; </div>
+				<div style="grid-row:1; grid-column:3"> Shutdown 
+					<div style="display:inline-block; padding-left:0.25em; transform:rotate(90deg); transform-origin:center center">&odash;</div>
+				</div>
+			</div>
+		</div>
+		<div style="display:grid" id="session-list">
+			<div style="grid-row:1; grid-column:1; padding:5px 10px; display:grid; grid-template-columns:25em 1fr 1fr 1fr 20em; background-color:#E0EEF7">
+				<div style="grid-row:1; grid-column:1">UUID</div>
+				<div style="grid-row:1; grid-column:2; text-align:center">Model</div>
+				<div style="grid-row:1; grid-column:3; text-align:center">Memory size</div>
+				<div style="grid-row:1; grid-column:4; text-align:center">Remain time</div>
+				<div style="grid-row:1; grid-column:5; text-align:center">Close</div>
+			</div>
+		
+			<div style="padding:5px; display:grid; grid-template-columns:1fr 20em">
+				<div style="grid-row:1; grid-column:1; padding:5px; display:grid; grid-template-columns:25em 1fr 1fr 1fr">
+					<div style="grid-row:1; grid-column:1">546e6675-5957-4720-8a8a-a078ea5af589</div>
+					<div style="grid-row:1; grid-column:2; text-align:center">Sequential</div>
+					<div style="grid-row:1; grid-column:3; text-align:center">1KB</div>
+					<div style="grid-row:1; grid-column:4; text-align:center">35min</div>
+				</div>
+				<div style="grid-row:1; grid-column:2; padding:5px; background-color:#CF767A; color:#FFF; text-align:center;">&times;</div>
+			</div>
+		</div>
+		<div style="display:block" id="list-form">
+			<div style="padding:5px; display:grid; grid-template-columns:1fr 20em">
+				<div style="grid-row:1; grid-column:1; padding:5px; display:grid; grid-template-columns:25em 1fr 1fr 1fr">
+					<div style="grid-row:1; grid-column:1">%UUID%</div>
+					<div style="grid-row:1; grid-column:2; text-align:center">%model%</div>
+					<div style="grid-row:1; grid-column:3; text-align:center">%mem-size%</div>
+					<div style="grid-row:1; grid-column:4; text-align:center">%remain-time%min</div>
+				</div>
+				<div style="grid-row:1; grid-column:2; padding:5px; background-color:#CF767A; color:#FFF; text-align:center;">&times;</div>
+			</div>
+		</div>
+	</body>
+</html>
