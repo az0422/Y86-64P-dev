@@ -1,7 +1,6 @@
 # -*- encoding:UTF-8 -*-
 
 import json
-import sys
 import uuid
 import threading
 import time
@@ -11,7 +10,7 @@ from modules.assembler import disassembly
 from modules.cpu import seq, pipe
 from modules.http import server
 
-SIMULATOR_VERSION = "0.1 Alpha-20220204r0"
+SIMULATOR_VERSION = "0.1 Alpha-20220204r1"
 
 simServer = server.server()
 lock = threading.Lock()
@@ -156,7 +155,6 @@ class simulatorServer():
         elif self.simulators[id]["model"] == "pipe":
             self.simulators[id]["sim"] = pipe.PIPE(program_byte, self.simulators[id]["memsize"])
         
-        
         # try make disassembly
         try:
             # make disassembly
@@ -287,7 +285,17 @@ class simulatorServer():
         response_dict["body"] = json.dumps({ "data": result_list })
         
         return response_dict
-
+    
+    @simServer.addJob("/kill")
+    def action_kill(self, request_dict, response_dict):
+        id = request_dict["POST"]["sim_id"]
+        
+        lock.acquire()
+        del self.simulators[id]
+        lock.release()
+        
+        return response_dict
+    
     def resultDictToJSON(self, in_dict_all):
         in_dict_orig = copy.deepcopy(in_dict_all["result"])
         sim_data = in_dict_all["sim"]
@@ -495,3 +503,4 @@ class checkAliveThread(threading.Thread):
     
     def shutdown(self):
         self.shutdown_flag = True
+        

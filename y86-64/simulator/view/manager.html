@@ -32,6 +32,9 @@
 				
 				xhr.onload = function() {
 					response_obj = JSON.parse(xhr.responseText);
+					session_list = response_obj.data
+					
+					document.getElementById("session-list").innerHTML = ""
 					
 					for (var i = 0; i < response_obj.data.length; i++) {
 						var item_data = document.getElementById("list-form").innerHTML;
@@ -39,7 +42,8 @@
 						item_data = item_data.replace("%UUID%", response_obj.data[i]["uuid"])
 											 .replace("%model%", response_obj.data[i]["model"])
 											 .replace("%mem-size%", response_obj.data[i]["memsize"])
-											 .replace("%remain-time%", response_obj.data[i]["life"]);
+											 .replace("%remain-time%", response_obj.data[i]["life"])
+											 .replace("%item-num%", i);
 						
 						document.getElementById("session-list").innerHTML += item_data;
 					}
@@ -47,7 +51,12 @@
 			}
 			
 			function closeItem(num) {
+				var xhr = new XMLHttpRequest();
+				xhr.open("POST", "/kill", true);
+				xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+				xhr.send("sim_id=" + session_list[num]["uuid"]);
 				
+				refreshList();
 			}
 			
 			window.onload = function() {
@@ -68,14 +77,14 @@
 				</div>
 			</div>
 		</div>
-		<div style="display:grid" id="session-list">
-			<div style="grid-row:1; grid-column:1; padding:5px 10px; display:grid; grid-template-columns:25em 1fr 1fr 1fr 20em; background-color:#E0EEF7">
+		<div style="grid-row:1; grid-column:1; padding:5px 10px; display:grid; grid-template-columns:25em 1fr 1fr 1fr 20em; background-color:#E0EEF7">
 				<div style="grid-row:1; grid-column:1">UUID</div>
 				<div style="grid-row:1; grid-column:2; text-align:center">Model</div>
 				<div style="grid-row:1; grid-column:3; text-align:center">Memory size</div>
 				<div style="grid-row:1; grid-column:4; text-align:center">Remain time</div>
 				<div style="grid-row:1; grid-column:5; text-align:center">Close</div>
 			</div>
+		<div style="display:grid" id="session-list">
 			
 		</div>
 		<div style="display:none" id="list-form">
