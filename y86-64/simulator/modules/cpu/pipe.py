@@ -15,6 +15,19 @@ class PIPE(cpumodel.CPUModel):
         self.MW = { "valE": 0x00, "valM": 0x00, "destE": 0xF, "destM": 0xF, "updateflag": 0x1, "memode": 0x0, "npct": -1 }
         
         self.memuse = 0
+        
+        self.model = "pipe"
+    
+    def getDefaultResult(self):
+        return { "fetch": { "opcode": 0x00, "rA": 0xF, "rB": 0xF, "const": 0x00, "pct": 0x00, "jmpc": 0x00, "buff": bytearray(16), "npct": -1 },
+                 "decode": { "valA": 0x00, "valB": 0x00, "valD": 0x00, "alumode": 0x0, "memode": 0x0, "DECC": 0x7, "ccupdate": 0x0,
+                             "srcA": 0xF, "srcB": 0xF, "srcD": 0xF, "destE": 0xF, "destM": 0xF, "npct": -1, "fwd_alu": "None", "fwd_mem": "None", "fwd_malu": "None" },
+                 "alu": { "valE": 0x00, "valD": 0x00, "memode": 0x0, "destE": 0xF, "destM": 0xF, "updateflag": 0x1, "npct": -1, "ALUCC": 7, "valA": 0, "valB": 0,
+                          "alumode": 0, "DECC": 7, "destE": 0xF, "destM": 0xF, "memode": 0 },
+                 "memory": { "valE": 0x00, "valM": 0x00, "destE": 0xF, "destM": 0xF, "updateflag": 0x1, "memode": 0x0, "npct": -1, "valD": 0 },
+                 "wb": { "destE": 0xF, "destM": 0xF, "valE": 0, "valM": 0, "updateflag": 1, "npct": -1 },
+                 "fwdu": { "alu": "None", "mem": "None", "malu": "None" }
+                }
     
     def run(self):
         # === write back ===

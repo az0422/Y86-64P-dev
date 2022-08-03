@@ -21,6 +21,8 @@ class CPUModel():
         self.status = 0x00
 
         self.nowPC = -1
+        
+        self.model = ""
     
     def run(self):
         pass
@@ -32,3 +34,6 @@ class CPUModel():
     
     def getRegisters(self):
         return self.registerFile.registers
+    
+    def getDefaultResult(self):
+        pass

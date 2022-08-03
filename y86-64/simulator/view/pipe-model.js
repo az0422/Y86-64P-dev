@@ -1,13 +1,17 @@
 
 // fetch
-document.getElementById("fetch-buffer").innerHTML = response_obj.fetch_buff;
-document.getElementById("fetch-pc").innerHTML = (response_obj.fetch_pct != -1 ? response_obj.fetch_pct : 0).toString(16).toUpperCase();
-document.getElementById("fetch-opcode").innerHTML = response_obj.fetch_opcode.toString(16).toUpperCase().padStart(2, "0");
-document.getElementById("fetch-rA").innerHTML = response_obj.fetch_rA.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.fetch_rA] + ")";
-document.getElementById("fetch-rB").innerHTML = response_obj.fetch_rB.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.fetch_rB] + ")";
-document.getElementById("fetch-constant").innerHTML = response_obj.fetch_const;
+fetch_data = response_obj["fetch"]
+
+document.getElementById("fetch-buffer").innerHTML = fetch_data["buff"];
+document.getElementById("fetch-pc").innerHTML = (fetch_data["pct"] != -1 ? fetch_data["pct"] : 0).toString(16).toUpperCase();
+document.getElementById("fetch-opcode").innerHTML = fetch_data["opcode"].toString(16).toUpperCase().padStart(2, "0");
+document.getElementById("fetch-rA").innerHTML = fetch_data["rA"].toString(16).toUpperCase() + " (" + REGISTERS[fetch_data["rA"]] + ")";
+document.getElementById("fetch-rB").innerHTML = fetch_data["rB"].toString(16).toUpperCase() + " (" + REGISTERS[fetch_data["rB"]] + ")";
+document.getElementById("fetch-constant").innerHTML = fetch_data["const"];
 
 // decode
+decode = response_obj["decode"]
+
 document.getElementById("decode-valA").innerHTML = response_obj.decode_valA;
 document.getElementById("decode-valB").innerHTML = response_obj.decode_valB;
 document.getElementById("decode-valD").innerHTML = response_obj.decode_valD;

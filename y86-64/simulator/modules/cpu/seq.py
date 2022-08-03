@@ -3,6 +3,20 @@ from modules.cpu.parts import register, fetch, decode, alu, memory, writeback
 from modules.cpu import cpumodel
 
 class SEQ(cpumodel.CPUModel):
+    def __init__(self, program, memsize):
+        super().__init__(program, memsize)
+        
+        self.model = "seq"
+    
+    def getDefaultResult(self):
+        return { "fetch": { "opcode": 0, "rA": 0xF, "rB": 0xF, "const": 0x00, "buff": bytearray(16), "pct": 0, "jmpc": 0x00, "status": 0, "stallcount": 0 }, 
+                 "decode": { "valA": 0, "valB": 0, "valD": 0, "destE": 0xF, "destM": 0xF, "srcA": 0xF, "srcB": 0xF , "srcD": 0xF, "DECC": 7,
+                 "alumode": 0, "memode": 0, "ccupdate": 0, "opcode": 0, "rA": 0xF, "rB": 0xF, "const": 0 }, 
+                 "alu": { "valE": 0, "ALUCC": 7, "valA": 0, "valB": 0, "alumode": 0, "updateflag": 1 }, 
+                 "memory": { "valE": 0, "valM": 0, "memerr": 0, "memode": 0, "valD": 0 }, 
+                 "wb": { "destE": 0xF, "destM": 0xF, "valE": 0, "valM": 0, "updateflag": 1 }
+                }
+    
     def run(self):
         pc = self.registerFile.readPC()
         self.nowPC = pc

@@ -1,35 +1,41 @@
 
 // fetch
-document.getElementById("fetch-buffer").innerHTML = response_obj.fetch_buff;
-document.getElementById("fetch-pc").innerHTML = (response_obj.fetch_pct != -1 ? response_obj.fetch_pct : 0).toString(16).toUpperCase();
-document.getElementById("fetch-opcode").innerHTML = response_obj.fetch_opcode.toString(16).toUpperCase().padStart(2, "0");
-document.getElementById("fetch-rA").innerHTML = response_obj.fetch_rA.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.fetch_rA] + ")";
-document.getElementById("fetch-rB").innerHTML = response_obj.fetch_rB.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.fetch_rB] + ")";
-document.getElementById("fetch-constant").innerHTML = response_obj.fetch_const;
+fetch_data = response_obj["fetch"]
+
+document.getElementById("fetch-buffer").innerHTML = fetch_data["buff"];
+document.getElementById("fetch-pc").innerHTML = (fetch_data["pct"] != -1 ? fetch_data["pct"] : 0).toString(16).toUpperCase();
+document.getElementById("fetch-opcode").innerHTML = fetch_data["opcode"].toString(16).toUpperCase().padStart(2, "0");
+document.getElementById("fetch-rA").innerHTML = fetch_data["rA"].toString(16).toUpperCase() + " (" + REGISTERS[fetch_data["rA"]] + ")";
+document.getElementById("fetch-rB").innerHTML = fetch_data["rB"].toString(16).toUpperCase() + " (" + REGISTERS[fetch_data["rB"]] + ")";
+document.getElementById("fetch-constant").innerHTML = fetch_data["const"];
 
 // decode
-document.getElementById("decode-valA").innerHTML = response_obj.decode_valA;
-document.getElementById("decode-valB").innerHTML = response_obj.decode_valB;
-document.getElementById("decode-valD").innerHTML = response_obj.decode_valD;
-document.getElementById("decode-srcA").innerHTML = response_obj.decode_srcA.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.decode_srcA] + ")";
-document.getElementById("decode-srcB").innerHTML = response_obj.decode_srcB.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.decode_srcB] + ")";
-document.getElementById("decode-srcD").innerHTML = response_obj.decode_srcD.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.decode_srcD] + ")";
-document.getElementById("decode-destE").innerHTML = response_obj.decode_destE.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.decode_destE] + ")";
-document.getElementById("decode-destM").innerHTML = response_obj.decode_destM.toString(16).toUpperCase() + " (" + REGISTERS[response_obj.decode_destM] + ")";
-document.getElementById("decode-decode-CC").innerHTML = response_obj.decode_DECC;
-document.getElementById("decode-memory-mode").innerHTML = MEMODE[response_obj.decode_memode];
-document.getElementById("decode-ALU-mode").innerHTML = ALUMODE[response_obj.decode_alumode];
-document.getElementById("decode-alu-ccupdate").innerHTML = response_obj.decode_ccupdate ? "Y" : "N";
+decode_data = response_obj["decode"]
+
+document.getElementById("decode-valA").innerHTML = decode_data["valA"];
+document.getElementById("decode-valB").innerHTML = decode_data["valB"];
+document.getElementById("decode-valD").innerHTML = decode_data["valD"];
+document.getElementById("decode-srcA").innerHTML = decode_data["srcA"].toString(16).toUpperCase() + " (" + REGISTERS[decode_data["srcA"]] + ")";
+document.getElementById("decode-srcB").innerHTML = decode_data["srcB"].toString(16).toUpperCase() + " (" + REGISTERS[decode_data["srcB"]] + ")";
+document.getElementById("decode-srcD").innerHTML = decode_data["srcD"].toString(16).toUpperCase() + " (" + REGISTERS[decode_data["srcD"]] + ")";
+document.getElementById("decode-destE").innerHTML = decode_data["destE"].toString(16).toUpperCase() + " (" + REGISTERS[decode_data["destE"]] + ")";
+document.getElementById("decode-destM").innerHTML = decode_data["destM"].toString(16).toUpperCase() + " (" + REGISTERS[decode_data["destM"]] + ")";
+document.getElementById("decode-decode-CC").innerHTML = decode_data["DECC"];
+document.getElementById("decode-memory-mode").innerHTML = MEMODE[decode_data["memode"]];
+document.getElementById("decode-ALU-mode").innerHTML = ALUMODE[decode_data["alumode"]];
+document.getElementById("decode-alu-ccupdate").innerHTML = decode_data["ccupdate"] ? "Y" : "N";
 
 // ALU
-document.getElementById("alu-valA").innerHTML = response_obj.alu_valA;
-document.getElementById("alu-valB").innerHTML = response_obj.alu_valB;
-document.getElementById("alu-mode").innerHTML = ALUMODE[response_obj.alu_alumode];
-document.getElementById("alu-valE").innerHTML = response_obj.alu_valE;
-document.getElementById("alu-ALUCC").innerHTML = response_obj.alu_ALUCC;
-document.getElementById("alu-ccupdate").innerHTML = response_obj.alu_ccupdate ? "Y" : "N";
-document.getElementById("alu-DECC").innerHTML = response_obj.alu_DECC;
-document.getElementById("alu-destE-update").innerHTML = response_obj.alu_updateflag ? "Y" : "N";
+alu_data = response_obj["alu"]
+
+document.getElementById("alu-valA").innerHTML = alu_data["valA"];
+document.getElementById("alu-valB").innerHTML = alu_data["valB"];
+document.getElementById("alu-mode").innerHTML = ALUMODE[alu_data["alumode"]];
+document.getElementById("alu-valE").innerHTML = alu_data["valE"];
+document.getElementById("alu-ALUCC").innerHTML = alu_data["ALUCC"];
+document.getElementById("alu-ccupdate").innerHTML = alu_data["ccupdate"] ? "Y" : "N";
+document.getElementById("alu-DECC").innerHTML = alu_data["DECC"];
+document.getElementById("alu-destE-update").innerHTML = alu_data["updateflag"] ? "Y" : "N";
 
 // memory
 document.getElementById("memory-mode").innerHTML = MEMODE[response_obj.memory_memode];

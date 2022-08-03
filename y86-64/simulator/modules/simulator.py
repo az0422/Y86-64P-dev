@@ -5,155 +5,247 @@ import uuid
 import threading
 import time
 import copy
+import os
 
 from modules.assembler import disassembly
 from modules.cpu import seq, pipe
-from modules.http import server
+import flask
 
 SIMULATOR_VERSION = "0.1 Alpha-20220204r1"
 
-simServer = server.server()
-lock = threading.Lock()
-
-class simulatorServer():
-    def __init__(self, serverport = 5500, serverhost = "localhost"):
-        self.simulators = {}
-
-        global simServer
-        simServer.setServerSettings(serverport = 5500, serverhost = serverhost, servername = "Y86-64+ Simulator")
-        simServer.setApplication(self)
-        #simServer.accesslog_flag = False
+def run(serverport = 5500, serverhost = "localhost"):
+    server = flask.Flask("Y86-64+ server")
+    
+    simulators = {}
+    
+    def disassemblyDictToStr(pc_list, simulator):
+        if simulator["dsmflag"] == False:
+            return "Disassemble was failure."
         
-        self.aliveChecker = checkAliveThread(self.simulators)
+        result_list = []
+        keys_list = list(simulator["dsmdict"].keys())
+        keys_list.sort()
+        
+        if simulator["model"] == "seq":
+            for key in keys_list:
+                if (key == pc_list[0]):
+                    result_list.append("<div class=\"run_seq\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, simulator["dsmdict"][key]))
+                    
+                else:
+                    result_list.append("<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, simulator["dsmdict"][key]))
+            
+        elif simulator["mode"] == "pipe":
+            i = 0;
+            css_list = ["run_pipe_fetch", "run_pipe_decode", "run_pipe_alu", "run_pipe_memory", "run_pipe_wb"]
+            
+            for key in keys_list:
+                if key in pc_list:
+                    css = ""
+                    
+                    for i in range(5):
+                        if key == pc_list[i]:
+                            css == css_list[i]
+                    
+                    result_list.append("<div class=\"%s\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (css, key, simulator["dsmdict"][key]))
+                    
+                else:
+                    result_list.append("<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, simulator["dsmdict"][key]))
+        
+        return "".join(result_list)
+        
+    def memoryArrToStr(rsp, rbp, mem_info, simulator):
+        str_list = []
+
+        for i in range(len(simulator["sim"].memory) >> 3):
+            mem_str = "".join(["%02X" % (simulator["sim"].memory[(i << 3) + j]) for j in range(8)])
+
+            str_list.append("")
+            str_list[-1] = "&nbsp;%06X: %s&nbsp;" % (i << 3, mem_str)
+            
+            # read
+            if mem_info[0] == 1 and mem_info[1] >> 3 == i:
+                str_list[-1] = "<span class=\"read_point\"> %s R&nbsp;</span>" % (str_list[-1])
+            
+            # write
+            elif mem_info[0] == 2 and mem_info[1] >> 3 == i:
+                str_list[-1] = "<span class=\"write_point\"> %s W&nbsp;</span>" % (str_list[-1])
+            
+            # stack point
+            if rsp >> 3 == i:
+                str_list[-1] = "<span class=\"rsp_point\">%s RSP&nbsp;</span>" % (str_list[-1])
+
+            # stack base point
+            if rbp >> 3 == i:
+                str_list[-1] = "<span class=\"rbp_point\"> %s RBP&nbsp;</span>" % (str_list[-1])
+            
+            str_list.append("<br>")
+        
+        return "".join(str_list)
     
-    def run(self):
-        self.aliveChecker.start()
-        simServer.run()
+    def resultDictToJSON(result, simulator):
+        result_dict = copy.deepcopy(result)
+        
+        pc_list = []
+        if simulator["model"] == "pipe":
+            pc_list = [result["fetch"]["npct"], result["decode"]["npct"],
+                       result["alu"]["npct"], result["memory"]["npct"],
+                       result["wb"]["npct"]]
+        
+        elif simulator["model"] == "seq":
+            pc_list = [simulator["sim"].nowPC]
+        
+        mem_info = [result["memory"]["memode"], result["memory"]["valE"]]
+        
+        status = simulator["sim"].status
+        CC = simulator["sim"].ALUCC
+        registers = simulator["sim"].getRegisters()
+        
+        flag_str = ("N", "Y")
+        status_str = "%d (NOP: %s, MEM ERR: %s, HALT: %s, INS ERR: %s, AOK: %s)" % (
+                     status, flag_str[status >> 3], flag_str[status >> 2 & 1], 
+                     flag_str[status >> 1 & 1], flag_str[status & 1],
+                     ("Y", "N")[int(bool(status))])
+        
+        flags = CC >> 3
+        cc = CC & 7
+        
+        flags_str = "%X (ZF: %d, SF: %d, OF: %d)" % (flags, flags >> 2, flags >> 1 & 1, flags & 1)
+        cc_str = "%X (eql: %d, grt: %d, les: %d)" % (cc, cc >> 2, cc >> 1 & 1, cc & 1)
+        
+        fetch_buff = [] 
+        
+        for b in result["fetch"]["buff"]:
+            fetch_buff.append(" %02X" % (b))
+        
+        result["fetch"]["buff"] = "".join(fetch_buff)
+        
+        alucc = result["alu"]["ALUCC"]
+        decc = result["decode"]["DECC"]
+        
+        result["alu"]["ALUCC"] = "%02X (ZF: %d, SF: %d, OF: %d, eql: %d, grt: %d, les: %d)" % (alucc, alucc >> 5, alucc >> 4 & 1,
+                                                                                               alucc >> 3 & 1, alucc >> 2 & 1, alucc >> 1 & 1, alucc & 1)
+        result["alu"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
+        result["decode"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
+        
+        assembly_str = disassemblyDictToStr(pc_list, simulator)
+        memory_str = memoryArrToStr(registers[0x4], registers[0x5], mem_info, simulator)
+        
+        registerRaw = []
+        registerInt = []
+        
+        for i in range(len(registers)):
+            registerRaw.append("%016X" % (registers[i]))
+            registerInt.append(registers[i] if registers[i] >> 63 != 1 else ((~registers[i] + 1) & 0xFFFFFFFFFFFFFFFF) * -1)
+        
+        result["object"] = assembly_str
+        result["memory"] = memory_str
+        result["status"] = status_str
+        result["flags"] = flags_str
+        result["CC"] = cc_str
+        
+        result["registerRaw"] = registerRaw
+        result["registerInt"] = registerInt
+        
+        return json.dumps(result)
     
-    @simServer.addJob("/")
-    def action_init(self, request_dict, response_dict):
-        # load and make simulator display
+    @server.route("/")
+    def action_init():
         simulator_body = open("./view/main.html", "r", encoding = "UTF-8").read().replace("    ", "").replace("\t", "")
         response_body = simulator_body.replace("%simulator-version%", SIMULATOR_VERSION)
         response_body = response_body.replace("%model-script-seq%", open("./view/seq-model.js", "r", encoding = "UTF-8").read())
         response_body = response_body.replace("%model-script-pipe%", open("./view/pipe-model.js", "r", encoding = "UTF-8").read())
-    
-        response_dict["body"] = response_body
         
-        return response_dict
+        return response_body
     
-    # create session
-    @simServer.addJob("/start")
-    def action_selectMode(self, request_dict, response_dict):
-        memsize = int(request_dict["POST"]["memsize"])
-        model = request_dict["POST"]["model"]
+    @server.route("/start", methods=["GET", "POST"])
+    def action_selectMode():
+        memsize = int(flask.request.form["memsize"])
+        model = flask.request.form["model"]
         
         id = str(uuid.uuid4())
         
-        lock.acquire()
-        self.simulators[id] = {
+        simulators[id] = {
             "memsize": memsize, "model": model, "life": 35, "dsmflag": True, "dsmdict": {}, "sim": None, "snapshot": {}
         }
-        lock.release()
         
-        memory_init_str = ""
+        memory_init = []
 
         for i in range(memsize):
             if i & 7 == 0:
-                memory_init_str += "\n&nbsp;%06X: " % (i)
+                memory_init.append("\n&nbsp;%06X: " % (i))
             
-            memory_init_str += "00"
+            memory_init.append("00")
         
-        memory_init_str = memory_init_str[1:].replace("\n", "&nbsp;<br>\n")
+        memory_init = "".join(memory_init)[1:].replace("\n", "<br>")
         
         model_html = open("./view/%s-model.html" % (model)).read()
         model_js = open("./view/%s-model.js" % (model)).read()
         
         model_name = { "seq": "sequential", "pipe": "pipeline" }[model]
         
-        response_dict["body"] = json.dumps({ "memory": memory_init_str, "model_html": model_html,
-                                             "model_js": model_js, "model_name": model_name,
-                                             "sim_id": id })
-        response_dict["Content-Type"] = "text/json"
-        
-        return response_dict
+        return flask.jsonify({ "memory": memory_init, "model_html": model_html,
+                               "model_js": model_js, "model_name": model_name,
+                               "sim_id": id })
     
-    # restart session
-    @simServer.addJob("/restart")
-    def action_restart(self, request_dict, response_dict):
-        id = request_dict["POST"]["sim_id"]
-        model = ""
+    @server.route("/restart", methods=["GET", "POST"])
+    def action_restart():
+        id = flask.request.form["sim_id"]
+
+        if id not in simulators.keys():
+            return flask.make_response("ID(%s) does NOT exist." % id, 400)
         
-        if id not in self.simulators.keys():
-            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
-            response_dict["body"] = "ID(%s) does NOT exist." % id
-            
-            return response_dict
-        
-        model = self.simulators[id]["model"]
+        model = simulators[id]["model"]
         model_html = open("./view/%s-model.html" % (model), "r", encoding = "UTF-8").read()
         
-        response_dict["body"] = json.dumps({ "model_html": model_html, "model_name": model })
-        
-        return response_dict
+        return flask.jsonify({ "model_html": model_html, "model_name": model })
     
-    # restore session
-    @simServer.addJob("/restore")
-    def action_restart(self, request_dict, response_dict):
-        id = request_dict["POST"]["sim_id"]
+    @server.route("/restore", methods=["GET", "POST"])
+    def action_restore():
+        id = flask.request.form["sim_id"]
         
-        if self.simulators[id]["snapshot"]:
-            response_dict["body"] = self.resultDictToJSON({ "result": self.simulators[id]["snapshot"], "sim": self.simulators[id] })
-            self.simulators[id]["life"] = 35
-            return response_dict
+        if simulators[id]["snapshot"]:
+            response = resultDictToJSON(simulators[id]["snapshot"], simulators[id])
+            simulators[id]["life"] = 35
+            
+            return flask.Response(response, mimetype="application/json")
+        
         else:
-            response_dict["result"] = "%s 404 Not Found" % (request_dict["httpv"])
-            response_dict["body"] = "snapshot is not found"
-            return response_dict
-    
-    # life refresh
-    @simServer.addJob("/alive")
-    def action_alive(self, request_dict, response_dict):
-        id = request_dict["POST"]["sim_id"]
+            return flask.make_response("snapshot was not found", 404)
+            
+    @server.route("/alive", methods=["GET", "POST"])
+    def action_alive():
+        id = flask.request.form["sim_id"]
         
-        lock.acquire()
-        if id in self.simulators.keys():
+        if id in simulators.keys():
             self.simulators[id]["life"] = 35
         else:
-            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
-            response_dict["body"] = "Simulator session was destroyed."
-        lock.release()
+            return flask.make_response("Simulator session was destroyed.", 400)
         
-        return response_dict
+        return "AOK"
     
-    @simServer.addJob("/load")
-    def action_load(self, request_dict, response_dict):
-        obj_file = request_dict["POST"]["obj_file"]
-        id = request_dict["POST"]["sim_id"]
+    @server.route("/load", methods=["GET", "POST"])
+    def action_load():
+        obj_file = flask.request.form["obj_file"]
+        id = flask.request.form["sim_id"]
 
-        # try read object file
-        try:
+        if os.path.isfile(obj_file):
             program_byte = open(obj_file, "br").read()
-        
-        # fail
-        except:
+            
+        else:
             print("ERR: %s cannot be read", (obj_file))
-
-            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
-            response_dict["body"] = "Object code load error.<br>The object file(%s) could not be loaded" % (obj_file)
-
-            self.simulators[id]["sim"] = None
-
-            return response_dict
+            
+            simulators[id]["sim"] = None
+            
+            return flask.make_response("Object code load error.<br>The object file(%s) could not be loaded" % (obj_file), 400)
         
-        self.simulators[id]["dsmdict"] = {}
+        simulators[id]["dsmdict"] = {}
 
         # create simulator
-        if self.simulators[id]["model"] == "seq":
-            self.simulators[id]["sim"] = seq.SEQ(program_byte, self.simulators[id]["memsize"])
+        if simulators[id]["model"] == "seq":
+            simulators[id]["sim"] = seq.SEQ(program_byte, simulators[id]["memsize"])
         
-        elif self.simulators[id]["model"] == "pipe":
-            self.simulators[id]["sim"] = pipe.PIPE(program_byte, self.simulators[id]["memsize"])
+        elif simulators[id]["model"] == "pipe":
+            simulators[id]["sim"] = pipe.PIPE(program_byte, simulators[id]["memsize"])
         
         # try make disassembly
         try:
@@ -163,80 +255,64 @@ class simulatorServer():
 
             # make disassembly dictionary
             for i in range(len(pc_point)):
-                self.simulators[id]["dsmdict"][pc_point[i]] = ("%-20s&nbsp;&nbsp;%s" % (bytecode_arr[i], assembly_list[i])).replace(" ", "&nbsp;")
+                simulators[id]["dsmdict"][pc_point[i]] = ("%-20s&nbsp;&nbsp;%s" % (bytecode_arr[i], assembly_list[i])).replace(" ", "&nbsp;")
             
-            # make dictionary to string
-            # PC = -1
-            assembly_str = self.disassemblyDictToStr([-1, -1, -1, -1, -1], self.simulators[id])
             
-            self.simulators[id]["dsmflag"] = True
+            simulators[id]["dsmflag"] = True
         
         # error
         except:
-            assembly_str = "The assembly code was not provided because an error occurred during disassembly."
-
-            self.simulators[id]["dsmflag"] = False
-
+            simulators[id]["dsmflag"] = False
+            
         # make JSON
-        response_body = self.resultDictToJSON({ "result": {}, "sim": self.simulators[id] })
-        self.simulators[id]["snapshot"] = {}
+        response_body = resultDictToJSON(simulators[id]["sim"].getDefaultResult(), simulators[id])
+        simulators[id]["snapshot"] = {}
 
-        response_dict["body"] = response_body
-        response_dict["Content-Type"] = "text/json"
-
-        return response_dict
+        return flask.Response(response_body, "text/application")
     
-    @simServer.addJob("/step")
-    def action_step(self, request_dict, response_dict):
-        id = request_dict["POST"]["sim_id"]
+    @server.route("/step", methods=["GET", "POST"])
+    def action_step():
+        id = flask.request.form["sim_id"]
         
-        if self.simulators[id]["sim"] == None:
-            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
-            response_dict["body"] = "Step run error.<br>The simulator is not initialized."
-            response_dict["Content-Length"] = str(len(response_dict["body"]))
+        if simulators[id]["sim"] == None:
+            return flask.make_response("Step run error.<br>The simulator is not initialized.", 400)
 
-            return response_dict
-
-        simulator_dict = self.simulators[id]["sim"].run()
+        simulator_dict = simulators[id]["sim"].run()
         
         # make JSON
-        response_body = self.resultDictToJSON({ "result": simulator_dict, "sim": self.simulators[id] })
-        self.simulators[id]["snapshot"] = simulator_dict
+        response_body = resultDictToJSON(simulator_dict, simulators[id])
+        simulators[id]["snapshot"] = simulator_dict
         
-        response_dict["body"] = response_body
-        response_dict["Content-Type"] = "text/json"
-
-        return response_dict
+        return flask.Response(response_body, "application/json")
     
-    @simServer.addJob("/run")
+    @server.route("/run", methods=["GET", "POST"])
     def action_run(self, request_dict, response_dict):
-        id = request_dict["POST"]["sim_id"]
+        id = flask.request.form["sim_id"]
         
-        if self.simulators[id]["sim"] == None:
-            response_dict["result"] = "%s 400 Bad Request" % (request_dict["httpv"])
-            response_dict["body"] = "Run error.<br>The simulator is not initialized. "
-            response_dict["Content-Length"] = str(len(response_dict["body"]))
-
-            return response_dict
-
-        response_body = ""
+        if simulators[id]["sim"] == None:
+            return flask.make_response("Run error.<br>The simulator is not initialized. ", 400)
 
         simulator_dict = self.simulators[id]["sim"].run()
 
-        while not(self.simulators[id]["sim"].status & 7):
-            simulator_dict = self.simulators[id]["sim"].run()
+        while not(simulators[id]["sim"].status & 7):
+            simulator_dict = simulators[id]["sim"].run()
         
-        if self.simulators[id]["model"] == "pipe":
+        if simulators[id]["model"] == "pipe":
             for i in range(4):
-                simulator_dict = self.simulators[id]["sim"].run()
+                simulator_dict = simulators[id]["sim"].run()
 
-        response_body = self.resultDictToJSON({ "result": simulator_dict, "sim": self.simulators[id] })
-        self.simulators[id]["snapshot"] = simulator_dict
+        response_body = resultDictToJSON(simulator_dict, simulators[id])
+        simulators[id]["snapshot"] = simulator_dict
 
         response_dict["Content-Type"] = "text/json"
         response_dict["body"] = response_body
         
         return response_dict
+    
+    server.run(port = serverport, host = serverhost)
+
+
+'''
     
     @simServer.addJob("/shutdown")
     def action_shutdown(self, request_dict, response_dict):
@@ -295,183 +371,6 @@ class simulatorServer():
         lock.release()
         
         return response_dict
-    
-    def resultDictToJSON(self, in_dict_all):
-        in_dict_orig = copy.deepcopy(in_dict_all["result"])
-        sim_data = in_dict_all["sim"]
-        
-        in_dict = {}
-        pc_list = [] # fetch, decode, ALU, memory, write back
-        mem_info = [] # mem mode, address
-        
-        if in_dict_orig == {}:
-            if sim_data["model"] == "seq":
-                in_dict = { "fetch": { "opcode": 0, "rA": 0xF, "rB": 0xF, "const": 0x00, "buff": bytearray(16), "pct": 0,
-                                       "jmpc": 0x00, "status": 0, "stallcount": 0 },
-                            "decode": { "valA": 0, "valB": 0, "valD": 0, "destE": 0xF, "destM": 0xF, "srcA": 0xF, "srcB": 0xF , "srcD": 0xF,
-                                        "DECC": 7, "alumode": 0, "memode": 0, "ccupdate": 0, "opcode": 0, "rA": 0xF, "rB": 0xF, "const": 0 },
-                            "alu": { "valE": 0, "ALUCC": 7, "valA": 0, "valB": 0, "alumode": 0, "updateflag": 1 },
-                            "memory": { "valE": 0, "valM": 0, "memerr": 0, "memode": 0, "valD": 0 },
-                            "wb": { "destE": 0xF, "destM": 0xF, "valE": 0, "valM": 0, "updateflag": 1 }
-                            
-                           }
-            
-            elif sim_data["model"] == "pipe":
-                in_dict = { "fetch": { "opcode": 0x00, "rA": 0xF, "rB": 0xF, "const": 0x00, "pct": 0x00,
-                                      "jmpc": 0x00, "buff": bytearray(16), "npct": -1 },
-                            "decode": { "valA": 0x00, "valB": 0x00, "valD": 0x00, "alumode": 0x0,
-                                        "memode": 0x0, "DECC": 0x7, "ccupdate": 0x0,
-                                        "srcA": 0xF, "srcB": 0xF, "srcD": 0xF, "destE": 0xF, "destM": 0xF, "npct": -1, 
-                                        "fwd_alu": "None", "fwd_mem": "None", "fwd_malu": "None" },
-                            "alu": { "valE": 0x00, "valD": 0x00, "memode": 0x0, "destE": 0xF, "destM": 0xF,
-                                     "updateflag": 0x1, "npct": -1, "ALUCC": 7, "valA": 0, "valB": 0,
-                                     "alumode": 0, "DECC": 7,
-                                     "destE": 0xF, "destM": 0xF, "memode": 0 },
-                            "memory": { "valE": 0x00, "valM": 0x00, "destE": 0xF, "destM": 0xF, "updateflag": 0x1,
-                                        "memode": 0x0, "npct": -1, "valD": 0 },
-                            "wb": { "destE": 0xF, "destM": 0xF, "valE": 0, "valM": 0, "updateflag": 1, "npct": -1 },
-                            "fwdu": { "alu": "None", "mem": "None", "malu": "None" }
-                          }
-        
-        else:
-            in_dict = in_dict_orig
-        
-        if sim_data["model"] == "pipe":
-            pc_list = [in_dict["fetch"]["npct"], in_dict["decode"]["npct"],
-                       in_dict["alu"]["npct"], in_dict["memory"]["npct"],
-                       in_dict["wb"]["npct"]]
-        
-        elif sim_data["model"] == "seq":
-            pc_list = [sim_data["sim"].nowPC]
-        
-        mem_info = [in_dict["memory"]["memode"], in_dict["memory"]["valE"]]
-        
-        # fetch status
-        status = sim_data["sim"].status
-        CC = sim_data["sim"].ALUCC
-        registers = sim_data["sim"].getRegisters()
-        
-        # status
-        # w: memory overflow, x: nop, y: halt, z: err
-        status_str = "%d (NOP: %s, MEM ERR: %s, HALT: %s, INS ERR: %s, AOK: %s)" % (status,
-                     ["N", "Y"][status >> 3], ["N", "Y"][status >> 2 & 1], ["N", "Y"][status >> 1 & 1],
-                     ["N", "Y"][status & 1], ["Y", "N"][int(bool(status))])
-
-        # flags and ALU CC
-        flags = CC >> 3
-        cc = CC & 7
-
-        flags_str = "%X (ZF: %d, SF: %d, OF: %d)" % (flags, flags >> 2, flags >> 1 & 1, flags & 1)
-        cc_str = "%X (eql: %d, grt: %d, les: %d)" % (cc, cc >> 2, cc >> 1 & 1, cc & 1)
-        
-        fetch_buff = "%02X" % (in_dict["fetch"]["buff"][0])
-
-        for b in in_dict["fetch"]["buff"][1:]:
-            fetch_buff += " %02X" % (b)
-        
-        alucc = in_dict["alu"]["ALUCC"]
-        decc = in_dict["decode"]["DECC"]
-        in_dict["fetch"]["buff"] = fetch_buff
-        in_dict["alu"]["ALUCC"] = "%02X (ZF: %d, SF: %d, OF: %d, eql: %d, grt: %d, les: %d)" % (alucc, alucc >> 5, alucc >> 4 & 1,
-                                                                                                alucc >> 3 & 1, alucc >> 2 & 1, alucc >> 1 & 1, alucc & 1)
-        in_dict["alu"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
-        in_dict["decode"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
-        
-        result = {}
-        
-        for main_key in in_dict.keys():
-            for sub_key in in_dict[main_key].keys():
-                if sub_key in ["const", "valA", "valB", "valD", "valE", "valM"]:
-                    result["%s_%s" % (main_key, sub_key)] = "%016X" % in_dict[main_key][sub_key]
-                else:
-                    result["%s_%s" % (main_key, sub_key)] = in_dict[main_key][sub_key]
-        
-        assembly_str = self.disassemblyDictToStr(pc_list, sim_data)
-        memory_str = self.memoryArrToStr(registers[0x4], registers[0x5], mem_info, sim_data)
-        
-        result["object"] = assembly_str
-        result["memory"] = memory_str
-        result["status"] = status_str
-        result["flags"] = flags_str
-        result["CC"] = cc_str
-        
-        # get register data
-        result["registerRaw"] = []
-        result["registerInt"] = []
-
-        for i in range(len(registers)):
-            result["registerRaw"].append("%016X" % (registers[i]))
-            result["registerInt"].append(registers[i] if registers[i] >> 63 != 1 else ((~registers[i] + 1) & 0xFFFFFFFFFFFFFFFF) * -1)
-        
-        # make JSON return
-        response_body = json.dumps(result)
-
-        return response_body
-
-    def disassemblyDictToStr(self, pc_list, sim_data):
-        if sim_data["dsmflag"] == False:
-            return "The assembly code was not provided because an error occurred during disassembly."
-
-        result_list = []
-        keys_list = list(sim_data["dsmdict"].keys())
-        keys_list.sort()
-
-        if sim_data["model"] == "seq":
-            for key in keys_list:
-                if (key == pc_list[0]):
-                    result_list.append("<div class=\"run_seq\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, sim_data["dsmdict"][key]))
-                
-                else:
-                    result_list.append("<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, sim_data["dsmdict"][key]))
-        
-        elif sim_data["model"] == "pipe":
-            i = 0
-            
-            css_list = ["run_pipe_fetch", "run_pipe_decode", "run_pipe_alu", "run_pipe_memory", "run_pipe_wb"]
-            
-            for key in keys_list:
-                if key in pc_list:
-                    css = ""
-                    for i in range(5):
-                        if key == pc_list[i]:
-                            css = css_list[i]
-                    
-                    result_list.append("<div class=\"%s\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (css, key, sim_data["dsmdict"][key]))
-                
-                else:
-                    result_list.append("<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, sim_data["dsmdict"][key]))
-
-        return "".join(result_list)
-    
-    def memoryArrToStr(self, rsp, rbp, mem_info, sim_data):
-        memory_str = ""
-        str_list = []
-
-        for i in range(len(sim_data["sim"].memory) >> 3):
-            mem_str = "".join(["%02X" % (sim_data["sim"].memory[(i << 3) + j]) for j in range(8)])
-
-            str_list.append("")
-            str_list[-1] = "&nbsp;%06X: %s&nbsp;" % (i << 3, mem_str)
-            
-            # read
-            if mem_info[0] == 1 and mem_info[1] >> 3 == i:
-                str_list[-1] = "<span class=\"read_point\"> %s R&nbsp;</span>" % (str_list[-1])
-            
-            # write
-            elif mem_info[0] == 2 and mem_info[1] >> 3 == i:
-                str_list[-1] = "<span class=\"write_point\"> %s W&nbsp;</span>" % (str_list[-1])
-            
-            # stack point
-            if rsp >> 3 == i:
-                str_list[-1] = "<span class=\"rsp_point\">%s RSP&nbsp;</span>" % (str_list[-1])
-
-            # stack base point
-            if rbp >> 3 == i:
-                str_list[-1] = "<span class=\"rbp_point\"> %s RBP&nbsp;</span>" % (str_list[-1])
-            
-            str_list.append("<br>")
-        
-        return "".join(str_list)
 
 # killer
 class checkAliveThread(threading.Thread):
@@ -503,4 +402,4 @@ class checkAliveThread(threading.Thread):
     
     def shutdown(self):
         self.shutdown_flag = True
-        
+   '''     

@@ -1,0 +1,100 @@
+	irmovq stack,%rsp
+	call main
+	halt
+	.align 8
+	.elemrkq 8
+	
+# array table
+data0:
+	.quad 0xA000A000A000A000
+data1:
+	.quad 0x0B000B000B000B00
+data2:
+	.quad 0x00C000C000C000C0
+data3:
+	.quad 0x000D000D000D000D
+ 
+# jump table
+.JUMP:
+	.quad .cond0
+	.quad .cond1
+	.quad .cond2
+	.quad .cond3
+.JUMP_END:
+
+main:
+	irmovq $4,%rcx
+	irmovq $3,%r8
+	irmovq $1,%r9
+	irmovq .JUMP_END,%rdx
+	rrmovq %null,%rax
+	
+.LOOP:
+	subq %r9,%rcx
+	rrmovq %rcx,%rbx
+	shl %r8,%rbx
+	mrmovq .JUMP(%rbx),%r10
+	rmmovq %r10,.L0(%r9)
+	pushq %rax
+.L0:
+	call 0x0
+	popq %r11
+	or %r11,%rax
+	test %rcx,%rcx
+	jne .LOOP
+	
+	ret
+
+.cond0:
+	mrmovq data0(%null),%rax
+	ret
+.cond1:
+	mrmovq data1(%null),%rax
+	ret
+.cond2:
+	mrmovq data2(%null),%rax
+	ret
+.cond3:
+	mrmovq data3(%null),%rax
+	ret
+
+	.align 8
+	.dummy 512
+stack:
+
+#
+# C expression
+#
+# int main() {
+#     unsigned long array = { 
+#         0xA000A000A000A000,
+#         0x0B000B000B000B00,
+#         0x00C000C000C000C0,
+#         0x000D000D000D000D
+#     };
+#     int i = 4;
+#     const one = 1, three = 3;
+#     int result = 0;
+#     int read;
+#
+#     do {
+#         i--;
+#         switch(i) {
+#         case 0:
+#             read = array[0];
+#             break;
+#         case 1:
+#             read = array[1];
+#             break;
+#         case 2:
+#             read = array[2];
+#             break;
+#         case 3:
+#             read = array[3];
+#             break;
+#         }
+#         result |= read;
+#     }
+#     while (i != 0);
+#     return 0;
+# }
