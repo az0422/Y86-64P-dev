@@ -22,8 +22,11 @@ class main(launcher.launcher):
         serverhost = configdata["Server"]["host"] if "host" in configdata["Server"].keys() else ""
 
         # make server and run
-        sim = simulator.run(serverport = serverport, serverhost = serverhost)
+        sim = simulator.simulatorServer(serverport = serverport, serverhost = serverhost)
+        sim.run()
         
+        sys.exit()
+
     def help_print(self):
         print("No help available")
         

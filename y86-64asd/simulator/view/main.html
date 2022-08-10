@@ -18,6 +18,10 @@
             }
 
             .top {
+                display: grid;
+                grid-template-rows: repeat(3, 1);
+                grid-template-columns: repeat(2, 1fr);
+
                 background-color: #286B7B;
                 color:#fff;
 
@@ -28,6 +32,9 @@
             }
 
             .title {
+                grid-row: 1;
+                grid-column: 1;
+                
                 font-size: 0.89em;
                 color: #E0EEF7;
             }
@@ -42,10 +49,43 @@
             }
 
             .control {
+                grid-row: 2;
+                grid-column: 1;
+
+                display: grid;
+                grid-template-columns: repeat(4, 1);
+
+                font-size: 1.5em;
+
+                user-select:none;
+            }
+
+            .file-in {
+                grid-row: 3;
+                grid-column: 1 / span 2;
+
+                display: grid;
+                grid-template-rows: repeat(1, 1);
+                grid-template-columns: repeat(2, 1);
+            }
+            
+            .file-in > input {
+                grid-row: 1;
+                grid-column: 1;
+            }
+
+            .file-in > div {
+                grid-row: 1;
+                grid-column: 2;
+                padding-left: 1em;
                 user-select:none;
             }
 
             .main {
+                display: grid;
+                grid-template-rows: 1.5em 50% 1.5em 4.5em 1.5em 1fr;
+                grid-template-columns: 2fr 3fr 20em;
+
                 margin-left: 0.25em;
                 margin-right: 0.25em;
 
@@ -213,7 +253,6 @@
             var REGISTERS = ["%rax", "%rcx", "%rdx", "%rbx", "%rsp", "%rbp", "%rsi", "%rdi", "%r8", "%r9", "%r10", "%r11", "%12", "%r13", "%r14", "%null", "PC", "const"];
             var simulator_model = "";
             var simulator_id = "";
-            var aliveInterval;
 			
             function model_script_func(response_obj) {
             	if (simulator_model == "sequential") {
@@ -256,9 +295,7 @@
 
                     document.getElementById("cover").style.display = "block";
                     document.getElementById("ERROR").style.display = "block";
-					
-                    clearInterval(aliveInterval);
-                    
+
                     return;
                     break;
                 }
@@ -287,6 +324,7 @@
             	
             	if (isNaN(memsize)) {
             		ErrorPrint("Memory size is NaN");
+                    
                     return;
             	}
             	
@@ -316,14 +354,17 @@
             		simulator_model = response_obj.model_name;
             		simulator_id = response_obj.sim_id;
             	}
-            	
-            	aliveIntervalStart();
            	}
            	
             
             function restartSimulator() {
             	var xhr = new XMLHttpRequest();
-            	var id = document.getElementById("start-sim-id").value;
+            	var id = "";
+            	
+            	for (var i = 1; i < 4; i++) {
+            		id += document.getElementById("sim-id-" + i).value + "-";
+            	}
+            	id += document.getElementById("sim-id-4").value;
             	
             	xhr.open("POST", "/restart", true);
             	xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
@@ -361,26 +402,24 @@
             			ErrorPrint(xhr.responseText);
             		}
             	}
-            	
-            	aliveIntervalStart();
             }
 
             function dataUpdate(response_obj) {
             	model_script_func(response_obj);
             	
                 // object
-                document.getElementById("object_display").innerHTML = response_obj["object"];
-                document.getElementById("memory_display").innerHTML = response_obj["memory_data"];
+                document.getElementById("object_display").innerHTML = response_obj.object;
+                document.getElementById("memory_display").innerHTML = response_obj.memory;
 
                 // status
-                document.getElementById("status-status").innerHTML = response_obj["status"];
-                document.getElementById("status-flags").innerHTML = response_obj["flags"]
-                document.getElementById("status-cc").innerHTML = response_obj["CC"]
+                document.getElementById("status-status").innerHTML = response_obj.status;
+                document.getElementById("status-flags").innerHTML = response_obj.flags
+                document.getElementById("status-cc").innerHTML = response_obj.CC
 
                 //registers
                 for (var i = 0; i <= 0x10; i++) {
-                    document.getElementById("r" + i.toString(16).toUpperCase() + "-raw").innerHTML = response_obj["registerRaw"][i];
-                    document.getElementById("r" + i.toString(16).toUpperCase() + "-integer").innerHTML = response_obj["registerInt"][i];
+                    document.getElementById("r" + i.toString(16).toUpperCase() + "-raw").innerHTML = response_obj.registerRaw[i];
+                    document.getElementById("r" + i.toString(16).toUpperCase() + "-integer").innerHTML = response_obj.registerInt[i];
                 }
             }
             
@@ -420,37 +459,28 @@
                     document.getElementById("ERROR").style.display = "none";
                 }, 2000)
             }
-            
-            function aliveIntervalStart() {
-            	aliveInterval = setInterval(function(){
-            		var lifeRefresh = new XMLHttpRequest();
-            		lifeRefresh.open("POST", "/alive", true);
-            		lifeRefresh.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-            		lifeRefresh.send("sim_id=" + simulator_id);
-            	}, 5 * 60 * 1000);
-            }
         </script>
     </head>
     <body>
         <!-- Header -->
-        <div class="top" style="display:grid; grid-template-columns:1fr 1fr">
-            <div class="title" style="grid-row:1; grid-column:1">
+        <div class="top">
+            <div class="title">
                 Y86-64+ Simulator
             </div>
-            <div class="control" style="grid-row:2; grid-column:1; display:grid; grid-template-columns:1 1 1 1; font-size:1.5em">
+            <div class="control">
                 <div onclick="simulatorActions(1)" style="grid-row:1; grid-column:1"> Reset &orarr; </div>
                 <div onclick="simulatorActions(2)" style="grid-row:1; grid-column:2"> Run &raquo; </div>
                 <div onclick="simulatorActions(3)" style="grid-row:1; grid-column:3"> Step &rtrif; </div>
                 <div onclick="simulatorActions(4)" style="grid-row:1; grid-column:4"> Shutdown &FilledSmallSquare;</div>
             </div>
-            <div style="grid-row:3; grid-column:1 / span 2; display:grid; grid-template-columns:1 1;">
-                <input id="file-path" style="grid-row:1; grid-column:1" placeholder="object file(example: /filepath/example.ypo)" onkeypress="javascript:if(event.keyCode == 13) { simulatorActions(0); }" />
-                <div class="control" style="grid-row:1; grid-column:2; padding-left:1em;" onclick="simulatorActions(0)"> Load </div>
+            <div class="file-in">
+                <input id="file-path" placeholder="object file(example: /filepath/example.ypo)" onkeypress="javascript:if(event.keyCode == 13) { simulatorActions(0); }" />
+                <div onclick="simulatorActions(0)"> Load </div>
             </div>
         </div>
 
         <!-- Body -->
-        <div class="main" style="display:grid; grid-template-rows:1.5em 50% 1.5em 4.5em 1.5em 1fr; grid-template-columns:2fr 3fr 20em;">
+        <div class="main">
 
             <!-- object code -->
             <div style="grid-row:1; grid-column: 1">
@@ -608,7 +638,7 @@
         <div class="version">
             version: %simulator-version%<br>
             model: <span id="info-model-name"></span><br>
-            simulator UUID: <span id="info-simulator-id"></span>
+            simulator ID: <span id="info-simulator-id"></span>
         </div>
 
         <div id="settings">
@@ -645,9 +675,12 @@
 		       	</div>
 		       	<div id="start-load-display" style="grid-row:2; grid-column:1; display:none">
 			       	<div style="display:grid; grid-row-gap:1em; padding: 0 1em 1em 1em; width:23em; text-align:center">
-			       		<div style="grid-row:1; grid-column:1">Enter the simulator UUID</div>
+			       		<div style="grid-row:1; grid-column:1">Enter the simulator ID</div>
 			       		<div style="grid-row:2; grid-column:1">
-			       			<input type="text" size="36" id="start-sim-id" />
+			       			<input type="number" size="4" id="sim-id-1" /> - 
+			       			<input type="number" size="4" id="sim-id-2" /> - 
+			       			<input type="number" size="4" id="sim-id-3" /> - 
+			       			<input type="number" size="4" id="sim-id-4" />
 			       		</div>
 			       		
 			       		<div style="grid-row:3; grid-column:1; text-align:center">

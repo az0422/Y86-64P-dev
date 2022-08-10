@@ -11,7 +11,7 @@ from modules.assembler import disassembly
 from modules.cpu import seq, pipe
 import flask
 
-SIMULATOR_VERSION = "0.1 Alpha-20220204r1"
+SIMULATOR_VERSION = "0.1 Alpha-20220811r0"
 
 def run(serverport = 5500, serverhost = "localhost"):
     server = flask.Flask("Y86-64+ server")
@@ -34,20 +34,19 @@ def run(serverport = 5500, serverhost = "localhost"):
                 else:
                     result_list.append("<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, simulator["dsmdict"][key]))
             
-        elif simulator["mode"] == "pipe":
+        elif simulator["model"] == "pipe":
             i = 0;
             css_list = ["run_pipe_fetch", "run_pipe_decode", "run_pipe_alu", "run_pipe_memory", "run_pipe_wb"]
             
             for key in keys_list:
                 if key in pc_list:
                     css = ""
-                    
                     for i in range(5):
                         if key == pc_list[i]:
-                            css == css_list[i]
+                            css = css_list[i]
                     
                     result_list.append("<div class=\"%s\">&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (css, key, simulator["dsmdict"][key]))
-                    
+                
                 else:
                     result_list.append("<div>&nbsp;&nbsp;%06X&nbsp;&nbsp;%s</div>\n" % (key, simulator["dsmdict"][key]))
         
@@ -85,16 +84,21 @@ def run(serverport = 5500, serverhost = "localhost"):
     def resultDictToJSON(result, simulator):
         result_dict = copy.deepcopy(result)
         
+        for model in result_dict.keys():
+            for k in result_dict[model].keys():
+                if k in ("valA", "valB", "valE", "const", "valD", "valM"):
+                    result_dict[model][k] = "%016X" % result_dict[model][k]
+        
         pc_list = []
         if simulator["model"] == "pipe":
-            pc_list = [result["fetch"]["npct"], result["decode"]["npct"],
-                       result["alu"]["npct"], result["memory"]["npct"],
-                       result["wb"]["npct"]]
+            pc_list = [result_dict["fetch"]["npct"], result_dict["decode"]["npct"],
+                       result_dict["alu"]["npct"], result_dict["memory"]["npct"],
+                       result_dict["wb"]["npct"]]
         
         elif simulator["model"] == "seq":
             pc_list = [simulator["sim"].nowPC]
         
-        mem_info = [result["memory"]["memode"], result["memory"]["valE"]]
+        mem_info = [result_dict["memory"]["memode"], result_dict["memory"]["valE"]]
         
         status = simulator["sim"].status
         CC = simulator["sim"].ALUCC
@@ -114,18 +118,18 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         fetch_buff = [] 
         
-        for b in result["fetch"]["buff"]:
+        for b in result_dict["fetch"]["buff"]:
             fetch_buff.append(" %02X" % (b))
         
-        result["fetch"]["buff"] = "".join(fetch_buff)
+        result_dict["fetch"]["buff"] = "".join(fetch_buff)
         
-        alucc = result["alu"]["ALUCC"]
-        decc = result["decode"]["DECC"]
+        alucc = result_dict["alu"]["ALUCC"]
+        decc = result_dict["decode"]["DECC"]
         
-        result["alu"]["ALUCC"] = "%02X (ZF: %d, SF: %d, OF: %d, eql: %d, grt: %d, les: %d)" % (alucc, alucc >> 5, alucc >> 4 & 1,
+        result_dict["alu"]["ALUCC"] = "%02X (ZF: %d, SF: %d, OF: %d, eql: %d, grt: %d, les: %d)" % (alucc, alucc >> 5, alucc >> 4 & 1,
                                                                                                alucc >> 3 & 1, alucc >> 2 & 1, alucc >> 1 & 1, alucc & 1)
-        result["alu"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
-        result["decode"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
+        result_dict["alu"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
+        result_dict["decode"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
         
         assembly_str = disassemblyDictToStr(pc_list, simulator)
         memory_str = memoryArrToStr(registers[0x4], registers[0x5], mem_info, simulator)
@@ -137,16 +141,16 @@ def run(serverport = 5500, serverhost = "localhost"):
             registerRaw.append("%016X" % (registers[i]))
             registerInt.append(registers[i] if registers[i] >> 63 != 1 else ((~registers[i] + 1) & 0xFFFFFFFFFFFFFFFF) * -1)
         
-        result["object"] = assembly_str
-        result["memory"] = memory_str
-        result["status"] = status_str
-        result["flags"] = flags_str
-        result["CC"] = cc_str
+        result_dict["object"] = assembly_str
+        result_dict["memory_data"] = memory_str
+        result_dict["status"] = status_str
+        result_dict["flags"] = flags_str
+        result_dict["CC"] = cc_str
         
-        result["registerRaw"] = registerRaw
-        result["registerInt"] = registerInt
+        result_dict["registerRaw"] = registerRaw
+        result_dict["registerInt"] = registerInt
         
-        return json.dumps(result)
+        return json.dumps(result_dict)
     
     @server.route("/")
     def action_init():
@@ -286,13 +290,13 @@ def run(serverport = 5500, serverhost = "localhost"):
         return flask.Response(response_body, "application/json")
     
     @server.route("/run", methods=["GET", "POST"])
-    def action_run(self, request_dict, response_dict):
+    def action_run():
         id = flask.request.form["sim_id"]
         
         if simulators[id]["sim"] == None:
             return flask.make_response("Run error.<br>The simulator is not initialized. ", 400)
 
-        simulator_dict = self.simulators[id]["sim"].run()
+        simulator_dict = simulators[id]["sim"].run()
 
         while not(simulators[id]["sim"].status & 7):
             simulator_dict = simulators[id]["sim"].run()
@@ -303,11 +307,8 @@ def run(serverport = 5500, serverhost = "localhost"):
 
         response_body = resultDictToJSON(simulator_dict, simulators[id])
         simulators[id]["snapshot"] = simulator_dict
-
-        response_dict["Content-Type"] = "text/json"
-        response_dict["body"] = response_body
         
-        return response_dict
+        return flask.Response(response_body, "application/json")
     
     server.run(port = serverport, host = serverhost)
 

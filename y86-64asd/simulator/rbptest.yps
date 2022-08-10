@@ -1,0 +1,12 @@
+	irmovq 1,%rbp
+	irmovq 2,%rbp
+	irmovq 3,%rbp
+	irmovq 4,%rbp
+	irmovq 5,%rbp
+	irmovq 6,%rbp
+	irmovq 7,%rbp
+	irmovq 8,%rbp
+	irmovq 9,%rbp
+	irmovq 10,%rbp
+	irmovq 11,%rbp
+	irmovq 12,%rbp

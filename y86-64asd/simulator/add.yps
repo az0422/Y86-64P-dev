@@ -1,0 +1,14 @@
+	.align 8
+	.elemrkq 0x3
+	.quad 0x2
+	.quad 0x3
+	.quad 0x0
+	irmovq $0x10,%rdi
+	mrmovq 0x18(%null),%rsi
+	call $0x50
+	rmmovq %rax,0x20(%null)
+	ret
+	mrmovq 0x0(%rdi),%rax
+	addq %rsi,%rax
+	ret
+	.dummy 0x1A3

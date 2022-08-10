@@ -1,0 +1,145 @@
+Init:
+	irmovq Stack, %rbp
+	irmovq Stack, %rsp
+	jmp Main
+
+	.align 8
+	.dummy 0x100
+Stack:
+
+	.align 8
+Main:
+	# Zero argument call
+	call ZeroArgs
+
+	call ResetRegisters
+
+	# One argument call
+	irmovq $1, %rbx
+	pushq %rbx
+	call OneArgs
+	rrmovq %rbp, %rsp
+
+	call ResetRegisters
+
+	# Two argument call
+	irmovq $3, %rsi
+	irmovq $2, %rdi
+	pushq %rdi
+	pushq %rsi
+	call TwoArgs
+	rrmovq %rbp, %rsp
+
+	call ResetRegisters
+
+	# Local variables on the stack
+	call LocalVars
+
+	call ResetRegisters
+
+	# Caller save -- watch the values of %rcx and %rdx! Here, we set them to
+	# 1 and 2, but CallerSave will modify them.
+	irmovq $1, %rcx
+	irmovq $2, %rdx
+	pushq %rcx  # To retain the current register values, push them onto the stack.
+	pushq %rdx
+	call CallerSave
+	popq %rdx
+	popq %rcx  # To get our old register values back, pop them off the stack.
+
+	call ResetRegisters
+
+	# Callee save -- watch the value of %rbx!
+	irmovq $9001, %rbx
+	call CalleeSave
+	nop # Immediately after returning, our value of %rbx is what we had it as before.
+
+	halt
+
+ResetRegisters:
+	xorq %rax, %rax
+	xorq %rbx, %rbx
+	xorq %rcx, %rcx
+	xorq %rdx, %rdx
+	xorq %rsi, %rsi
+	xorq %rdi, %rdi
+	ret
+
+# Creates a new stack frame and destroys it.
+ZeroArgs:
+	pushq %rbp
+	rrmovq %rsp, %rbp
+
+	rrmovq %rbp, %rsp
+	popq %rbp
+	ret
+
+# Returns the argument passed.
+OneArgs:
+	pushq %rbp
+	rrmovq %rsp, %rbp
+
+	mrmovq 8(%rbp), %rax  # Puts the first argument in %rax to return.
+
+	rrmovq %rbp, %rsp
+	popq %rbp
+	ret
+
+# Subtracts the second argument from the first argument.
+TwoArgs:
+	pushq %rbp
+	rrmovq %rsp, %rbp
+
+	mrmovq 8(%rbp), %rax   # First argument
+	mrmovq 12(%rbp), %rdx  # Second argument
+
+	subq %rdx, %rax        # eax = eax - edx
+	
+	rrmovq %rbp, %rsp
+	popq %rbp
+	ret
+
+# Creates 15 local variables on the stack, then returns 0.
+LocalVars:
+	pushq %rbp
+	rrmovq %rsp, %rbp
+
+	irmovq $15, %rax
+	irmovq $1, %rbx
+
+LocalVars_Loop:
+	pushq %rax
+	subq %rbx, %rax
+	jne LocalVars_Loop
+
+LocalVars_End:
+	rrmovq %rbp, %rsp
+	popq %rbp
+	ret
+
+# Caller-save register demonstration. Mangles %rcx and %rdx and returns 7.
+CallerSave:
+	pushq %rbp
+	rrmovq %rsp, %rbp
+
+	irmovq $3, %rcx
+	irmovq $4, %rdx
+	addq %rcx, %rdx
+	rrmovq %rdx, %rax
+
+	rrmovq %rbp, %rsp
+	popq %rbp
+	ret
+
+# Callee-save register demonstration. Changes %rbx, but restores it.
+CalleeSave:
+	pushq %rbp
+	rrmovq %rsp, %rbp
+	pushq %rbx  # Save old register value, since it's callee-save.
+
+	irmovq $-9001, %rbx
+
+	popq %rbx  # Restore old register value.
+	rrmovq %rbp, %rsp
+	popq %rbp
+	ret

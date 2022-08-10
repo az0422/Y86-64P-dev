@@ -1,0 +1,4 @@
+	.align 8
+	halt
+	.dummy 6
+	.align 8
