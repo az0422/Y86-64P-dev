@@ -1,9 +1,0 @@
-	not %null,%rax
-	rmmovq %rax,.data(%null)
-	mrmovq .data(%null),%rcx
-	subq %rcx,%rax
-	
-	halt
-	.align 8
-.data:
-	.dummy 8
