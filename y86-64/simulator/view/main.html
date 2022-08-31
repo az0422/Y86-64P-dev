@@ -250,9 +250,10 @@
                     
                 case 4:
                 	xhr.open("POST", "/shutdown", true);
-                    xhr.send();
+                	xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                    xhr.send("sim_id=" + simulator_id);
                     
-                    document.getElementById("ERROR").innerHTML = "Simulator has been terminated.";
+                    document.getElementById("ERROR").innerHTML = "This session was terminated.";
 
                     document.getElementById("cover").style.display = "block";
                     document.getElementById("ERROR").style.display = "block";

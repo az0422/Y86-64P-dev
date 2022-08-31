@@ -81,8 +81,9 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         return "".join(str_list)
     
-    def resultDictToJSON(result, simulator):
-        result_dict = copy.deepcopy(result)
+    def resultDictToJSON(result_orig, simulator_orig):
+        result_dict = copy.deepcopy(result_orig)
+        simulator = copy.deepcopy(simulator_orig)
         
         for model in result_dict.keys():
             for k in result_dict[model].keys():
@@ -98,7 +99,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         elif simulator["model"] == "seq":
             pc_list = [simulator["sim"].nowPC]
         
-        mem_info = [result_dict["memory"]["memode"], result_dict["memory"]["valE"]]
+        mem_info = [result_dict["memory"]["memode"], result_orig["memory"]["valE"]]
         
         status = simulator["sim"].status
         CC = simulator["sim"].ALUCC
@@ -310,8 +311,18 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         return flask.Response(response_body, "application/json")
     
+    @server.route("/shutdown", methods=["GET", "POST"])
+    def action_shutdown():
+        id = flask.request.form["sim_id"]
+        
+        if id not in simulators.keys():
+            return flask.make_response("Run error.<br>The simulator is not initialized. ", 400)
+        
+        del simulators[id]
+        
+        return "This session was terminated."
+        
     server.run(port = serverport, host = serverhost)
-
 
 '''
     
