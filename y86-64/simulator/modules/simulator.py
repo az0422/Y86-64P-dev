@@ -222,7 +222,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         id = flask.request.form["sim_id"]
         
         if id in simulators.keys():
-            self.simulators[id]["life"] = 35
+            simulators[id]["life"] = 35
         else:
             return flask.make_response("Simulator session was destroyed.", 400)
         
@@ -286,7 +286,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         # make JSON
         response_body = resultDictToJSON(simulator_dict, simulators[id])
-        simulators[id]["snapshot"] = simulator_dict
+        simulators[id]["snapshot"] = copy.deepcopy(simulator_dict)
         
         return flask.Response(response_body, "application/json")
     

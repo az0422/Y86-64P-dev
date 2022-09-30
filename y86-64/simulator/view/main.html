@@ -214,6 +214,8 @@
             var simulator_model = "";
             var simulator_id = "";
             var aliveInterval;
+            
+
 			
             function model_script_func(response_obj) {
             	if (simulator_model == "sequential") {
@@ -263,18 +265,18 @@
                     return;
                     break;
                 }
-
+				
+                
                 xhr.onload = function() {
-                    // success
-                    if (xhr.status == 200) {
-                        response_obj = JSON.parse(xhr.responseText);
-                        dataUpdate(response_obj);
-                    }
-
-                    // error
-                    else if (xhr.status == 400) {
+                	if (xhr.status == 400) {
                     	ErrorPrint(xhr.response_text);
+                    	return;
                     }
+                	
+                    // success
+                    response_obj = JSON.parse(xhr.responseText);
+                    console.log("AAAAAA");
+                    dataUpdate(response_obj);
                 }
             }
                 
