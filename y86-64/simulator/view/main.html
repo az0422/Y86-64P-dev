@@ -446,9 +446,12 @@
                 <div onclick="simulatorActions(3)" style="grid-row:1; grid-column:3"> Step &rtrif; </div>
                 <div onclick="simulatorActions(4)" style="grid-row:1; grid-column:4"> Shutdown &FilledSmallSquare;</div>
             </div>
-            <div style="grid-row:3; grid-column:1 / span 2; display:grid; grid-template-columns:1 1;">
+            <div style="grid-row:3; grid-column:1;">
+            	<div style="background-color:white; color:black; text-align:center"> NEW ASSEMBLY CODE </div>
+                <!-- 
                 <input id="file-path" style="grid-row:1; grid-column:1" placeholder="object file(example: /filepath/example.ypo)" onkeypress="javascript:if(event.keyCode == 13) { simulatorActions(0); }" />
                 <div class="control" style="grid-row:1; grid-column:2; padding-left:1em;" onclick="simulatorActions(0)"> Load </div>
+                -->
             </div>
         </div>
 
@@ -658,6 +661,18 @@
 			       		</div>
 			       	</div>
 		       	</div>
+       		</div>
+       	</div>
+       	
+       	<div id="assembly-input" style="position:absolute; top:0px; left:0px">
+       		<div style="display:grid; grid-template-columns: 1fr 1fr; padding:20px">
+       			<textarea id="assembly-code" style="resize:none; width:calc(50vw - 44px); height:calc(100vh - 44px); font-family: Inconsolata, monospace"></textarea>
+       			<div>
+       			Assemble Log
+       				<div>
+       					
+       				</div>
+       			</div>
        		</div>
        	</div>
        	
