@@ -11,7 +11,7 @@ from modules.assembler import assembly, disassembly, Exceptions
 from modules.cpu import seq, pipe
 import flask
 
-SIMULATOR_VERSION = "0.2 Alpha-1-20221101r0"
+SIMULATOR_VERSION = "0.2 Alpha-1-20221101r1"
 
 def run(serverport = 5500, serverhost = "localhost"):
     server = flask.Flask("Y86-64+ server")
@@ -169,7 +169,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         response_body = response_body.replace("%example-list%", "\n".join(examples_list))
         
-        return response_body
+        return response_body, 200
     
     @server.route("/start", methods=["GET", "POST"])
     def action_selectMode():
@@ -199,7 +199,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         return flask.jsonify({ "memory": memory_init, "model_html": model_html,
                                "model_js": model_js, "model_name": model_name,
-                               "sim_id": id })
+                               "sim_id": id }), 200
     
     @server.route("/restart", methods=["GET", "POST"])
     def action_restart():
@@ -211,7 +211,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         model = simulators[id]["model"]
         model_html = open("./view/%s-model.html" % (model), "r", encoding = "UTF-8").read()
         
-        return flask.jsonify({ "model_html": model_html, "model_name": model })
+        return flask.jsonify({ "model_html": model_html, "model_name": model }), 200
     
     @server.route("/restore", methods=["GET", "POST"])
     def action_restore():
@@ -221,7 +221,7 @@ def run(serverport = 5500, serverhost = "localhost"):
             response = resultDictToJSON(simulators[id]["snapshot"], simulators[id])
             simulators[id]["life"] = 35
             
-            return flask.Response(response, mimetype="application/json")
+            return flask.Response(response, mimetype="application/json"), 200
         
         else:
             return flask.make_response("snapshot was not found", 404)
@@ -235,7 +235,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         else:
             return flask.make_response("Simulator session was destroyed.", 400)
         
-        return "AOK"
+        return "AOK", 200
     
     #@server.route("/load", methods=["GET", "POST"])
     def action_load(program_byte, id):
@@ -285,7 +285,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         response_body = resultDictToJSON(simulator_dict, simulators[id])
         simulators[id]["snapshot"] = copy.deepcopy(simulator_dict)
         
-        return flask.Response(response_body, "application/json")
+        return flask.Response(response_body, "application/json"), 200
     
     @server.route("/run", methods=["GET", "POST"])
     def action_run():
@@ -306,7 +306,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         response_body = resultDictToJSON(simulator_dict, simulators[id])
         simulators[id]["snapshot"] = simulator_dict
         
-        return flask.Response(response_body, "application/json")
+        return flask.Response(response_body, "application/json"), 200
     
     @server.route("/assembly", methods = ["POST", "GET"])
     def action_assembly():
@@ -320,13 +320,13 @@ def run(serverport = 5500, serverhost = "localhost"):
             return flask.Response(action_load(assemblyCode, id), "application/json"), 200
         except Exceptions.asmException as e:
             return e.toString(), 400
-        return '몰?루'
+        return ""
             
     @server.route("/example", methods = ["GET", "POST"])
     def action_example():
         example_num = int(flask.request.form["num"])
         example = open("./examples/" + examples[example_num], "r").read()
-        return flask.Response(example, "text/plain")
+        return flask.Response(example, "text/plain"), 200
     
     @server.route("/shutdown", methods=["GET", "POST"])
     def action_shutdown():
@@ -337,6 +337,6 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         del simulators[id]
         
-        return "This session was terminated."
+        return "This session was terminated.", 200
         
     server.run(port = serverport, host = serverhost)
