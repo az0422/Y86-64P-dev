@@ -7,14 +7,16 @@ import time
 import copy
 import os
 
-from modules.assembler import disassembly
+from modules.assembler import assembly, disassembly, Exceptions
 from modules.cpu import seq, pipe
 import flask
 
-SIMULATOR_VERSION = "0.1 Alpha-20220811r0"
+SIMULATOR_VERSION = "0.2 Alpha-1-20221101r0"
 
 def run(serverport = 5500, serverhost = "localhost"):
     server = flask.Flask("Y86-64+ server")
+    examples = os.listdir("./examples")
+    examples.sort()
     
     simulators = {}
     
@@ -160,6 +162,13 @@ def run(serverport = 5500, serverhost = "localhost"):
         response_body = response_body.replace("%model-script-seq%", open("./view/seq-model.js", "r", encoding = "UTF-8").read())
         response_body = response_body.replace("%model-script-pipe%", open("./view/pipe-model.js", "r", encoding = "UTF-8").read())
         
+        examples_list = []
+        
+        for i, example in enumerate(examples):
+            examples_list.append("<li onclick=\"loadExampleCode(" + str(i) + ")\"> %s </li>" % example)
+        
+        response_body = response_body.replace("%example-list%", "\n".join(examples_list))
+        
         return response_body
     
     @server.route("/start", methods=["GET", "POST"])
@@ -228,21 +237,8 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         return "AOK"
     
-    @server.route("/load", methods=["GET", "POST"])
-    def action_load():
-        obj_file = flask.request.form["obj_file"]
-        id = flask.request.form["sim_id"]
-
-        if os.path.isfile(obj_file):
-            program_byte = open(obj_file, "br").read()
-            
-        else:
-            print("ERR: %s cannot be read", (obj_file))
-            
-            simulators[id]["sim"] = None
-            
-            return flask.make_response("Object code load error.<br>The object file(%s) could not be loaded" % (obj_file), 400)
-        
+    #@server.route("/load", methods=["GET", "POST"])
+    def action_load(program_byte, id):
         simulators[id]["dsmdict"] = {}
 
         # create simulator
@@ -272,8 +268,9 @@ def run(serverport = 5500, serverhost = "localhost"):
         # make JSON
         response_body = resultDictToJSON(simulators[id]["sim"].getDefaultResult(), simulators[id])
         simulators[id]["snapshot"] = {}
-
-        return flask.Response(response_body, "text/application")
+        return response_body
+        
+        #return flask.Response(response_body, "text/application")
     
     @server.route("/step", methods=["GET", "POST"])
     def action_step():
@@ -310,6 +307,26 @@ def run(serverport = 5500, serverhost = "localhost"):
         simulators[id]["snapshot"] = simulator_dict
         
         return flask.Response(response_body, "application/json")
+    
+    @server.route("/assembly", methods = ["POST", "GET"])
+    def action_assembly():
+        data = flask.request.data.decode("UTF-8")
+        id, asm = data.split("&", maxsplit=1)
+        id = id.split("=")[1]
+        asm_list = asm.split("=", maxsplit=1)[1].split("\n")
+        
+        try:
+            assemblyCode = assembly.Assembly(asm_list).run("0")
+            return flask.Response(action_load(assemblyCode, id), "application/json"), 200
+        except Exceptions.asmException as e:
+            return e.toString(), 400
+        return '몰?루'
+            
+    @server.route("/example", methods = ["GET", "POST"])
+    def action_example():
+        example_num = int(flask.request.form["num"])
+        example = open("./examples/" + examples[example_num], "r").read()
+        return flask.Response(example, "text/plain")
     
     @server.route("/shutdown", methods=["GET", "POST"])
     def action_shutdown():

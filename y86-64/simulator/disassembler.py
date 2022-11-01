@@ -22,7 +22,7 @@ class main(launcher.launcher):
         try:
             asm = disassembler.run()
         except Exceptions.dsmException as dsmExcept:
-            dsmExcept.print()
+            dsmExcept.printError()
             sys.exit()
 
         str = ""

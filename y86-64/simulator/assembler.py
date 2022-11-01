@@ -25,7 +25,7 @@ class main(launcher.launcher):
         try:
             bytecode = assembler.run(warn_level)
         except Exceptions.asmException as asmExcept:
-            asmExcept.print()
+            asmExcept.printError()
             sys.exit()
 
         open(file_out, "bw").write(bytecode)

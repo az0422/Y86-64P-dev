@@ -8,9 +8,12 @@ class asmException(Exception):
         self.name = name
         self.msg = msg
     
-    def print(self):
+    def printError(self):
         print("%s line at %d" % (self.code, self.line))
         print("%s: %s" % (self.name, self.msg))
+    
+    def toString(self):
+        return "%s line at %d\n%s: %s" % (self.code, self.line, self.name, self.msg)
 
 class dsmException(Exception):
     def __init__(self, msg, name, addr, buffs):
@@ -20,9 +23,12 @@ class dsmException(Exception):
         self.name = name
         self.msg = msg
     
-    def print(self):
+    def printError(self):
         print("buffer: %s, address: %X" % (self.buffs, self.addr))
         print("%s: %s" % (self.name, self.msg))
+    
+    def toString(self):
+        return "buffer: %s, address: %X\n%s: %s" % (self.buffs, self.addr, self.name, self.msg)
 
 class AsmSyntaxError(asmException):
 	def __init__(self, line, code):
