@@ -722,7 +722,8 @@
 	       			</div>
 	       			<div style="grid-column:2; grid-row:1 / span 2; background-color:#286B7B; height:calc(100vh - 100px)"></div>
 	       			<div style="grid-column:3; padding: 20px">
-	       				<textarea id="assembly-code-input" class="code" style="resize:none; width:100%;height:100%"></textarea>
+	       				<textarea id="assembly-code-input" class="code" style="resize:none; width:100%;height:100%"
+	       					onkeydown="if(event.keyCode===9){var v=this.value,s=this.selectionStart,e=this.selectionEnd;this.value=v.substring(0, s)+'\t'+v.substring(e);this.selectionStart=this.selectionEnd=s+1;return false;}"></textarea>
 	       			</div>
 	       			<div style="grid-column:3; grid-row:2; padding-left:1em; padding-right:1em">
 	       				<div onclick="assembleCode()" style=" border:1px solid #286B7B;height:2em; display:flex; place-items:center; justify-content:center">
