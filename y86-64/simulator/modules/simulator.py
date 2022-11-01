@@ -11,7 +11,7 @@ from modules.assembler import assembly, disassembly, Exceptions
 from modules.cpu import seq, pipe
 import flask
 
-SIMULATOR_VERSION = "0.2 Alpha-1-20221101r2"
+SIMULATOR_VERSION = "0.2 Alpha-1-20221101r3"
 
 def run(serverport = 5500, serverhost = "localhost"):
     server = flask.Flask("Y86-64+ server")
@@ -237,7 +237,6 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         return "AOK", 200
     
-    #@server.route("/load", methods=["GET", "POST"])
     def action_load(program_byte, id):
         simulators[id]["dsmdict"] = {}
 

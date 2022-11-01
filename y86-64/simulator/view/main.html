@@ -237,9 +237,10 @@
                 case 0:
                 	filepath = document.getElementById("file-path").value;
                 case 1:
-                	xhr.open("POST", "/load", true);
-                    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                    xhr.send("obj_file=" + filepath + "&sim_id=" + simulator_id);
+                	var assemblyCode = document.getElementById("assembly-code-input").value;
+                	xhr.open("POST", "/assembly", true);
+                    xhr.setRequestHeader("Content-Type", "text/plain");
+                    xhr.send("id=" + simulator_id + "&asm=" + assemblyCode);
                     break;
                     
                 case 2:
