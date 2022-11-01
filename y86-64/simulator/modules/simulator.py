@@ -11,7 +11,7 @@ from modules.assembler import assembly, disassembly, Exceptions
 from modules.cpu import seq, pipe
 import flask
 
-SIMULATOR_VERSION = "0.2 Alpha-1-20221101r4"
+SIMULATOR_VERSION = "0.2 Alpha-1-20221101r5"
 
 def run(serverport = 5500, serverhost = "localhost"):
     server = flask.Flask("Y86-64+ server")
