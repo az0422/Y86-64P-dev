@@ -1,6 +1,7 @@
 # -*- encoding:UTF-8 -*-
 from modules.cpu.parts import register, fetch, decode, alu, memory, writeback
 from modules.cpu import cpumodel
+import copy
 
 class PIPE(cpumodel.CPUModel):
     def __init__(self, program, memsize):
@@ -17,6 +18,8 @@ class PIPE(cpumodel.CPUModel):
         self.memuse = 0
         
         self.model = "pipe"
+        
+        self.recentRegister = 0xF
     
     def getDefaultResult(self):
         return { "fetch": { "opcode": 0x00, "rA": 0xF, "rB": 0xF, "const": 0x00, "pct": 0x00, "jmpc": 0x00, "buff": bytearray(16), "npct": -1 },
@@ -30,74 +33,18 @@ class PIPE(cpumodel.CPUModel):
                 }
     
     def run(self):
-        # === write back ===
-        wb_dict = writeback.writeback(self.MW, self.registerFile)
-        wb_dict["npct"] = self.MW["npct"]
+        pc = self.registerFile.readPC()
+        self.nowPC = pc
         
-        # === memory ===
-        memory_dict = memory.memory(self.AM, self.memory)
-        memory_dict["npct"] = self.AM["npct"]
-        
-        # pass
-        for key in ["destE", "destM", "updateflag", "valD"]:
-            memory_dict[key] = self.AM[key]
-        
-        self.MW = memory_dict
-        
-        fwdu = { "mem": "None", "malu": "None", "alu": "None" }
-        
-        self.forwardingUnit(fwdu)
-        
-        # === ALU ===
-        alu_dict = alu.ALU(self.DA)
-        alu_dict["npct"] = self.DA["npct"]
-        
-        # CC Update
-        if self.DA["ccupdate"]:
-            self.ALUCC = alu_dict["ALUCC"]
-        
-        updateflag = self.ALUCC & self.DA["DECC"]
-        alu_dict["updateflag"] = updateflag
-        
-        # pass
-        for key in ["valD", "memode", "destE", "destM", "DECC"]:
-            alu_dict[key] = self.DA[key]
-        
-        self.AM = alu_dict
-        
-        # === decode ===
-        decode_dict = decode.decode(self.FD, self.registerFile)
-        decode_dict["npct"] = self.FD["npct"]
-        
-        self.DA = decode_dict
-        
-        self.forwardingUnit(fwdu)
-        
-        # === fetch ===
-        if self.stallcount:
-            # stall
-            self.stallcount -=1
-            pct = self.FD["pct"]
-            npct = self.FD["npct"]
-            self.FD = { "opcode": 0x00, "rA": 0xF, "rB": 0xF, "const": 0x00, "buff": bytearray(16),
-                        "pct": pct, "jmpc": 0x00, "status": 0x8, "stallcount": self.stallcount, "npct": npct }
-            self.status |= 8
-
+        if pc >= len(self.memory):
+            self.status |= 4
+            
         else:
-            # fetch PC
-            pc = self.registerFile.readPC()
-            self.nowPC = pc
-            
-            self.status &= 7
-            
-            # memory error
-            if pc >= len(self.memory):
-                self.status |= 4
-
+        # --- fetch ---
             fetch_dict = fetch.fetch(self.memory, pc)
-
+            
             self.status = self.status & 7
-
+    
             # status update
             self.status |= fetch_dict["status"]
             
@@ -106,14 +53,47 @@ class PIPE(cpumodel.CPUModel):
                 self.registerFile.writePC(fetch_dict["pct"])
             
             fetch_dict["npct"] = self.nowPC
-            
-            # update pipeline register from result
-            self.FD = fetch_dict
-
-            # update stall count
-            self.stallcount = fetch_dict["stallcount"]
         
-        return { "fetch": self.FD, "decode": self.DA, "alu": self.AM, "memory": self.MW, "wb": wb_dict, "fwdu": fwdu }
+        # --- decode --- 
+        decode_dict = decode.decode(fetch_dict, self.registerFile)
+        decode_dict["npct"] = fetch_dict["npct"]
+        
+        # --- ALU ---
+        alu_dict = alu.ALU(decode_dict)
+        
+        # CC Update
+        if decode_dict["ccupdate"]:
+            self.ALUCC = alu_dict["ALUCC"]
+        
+        updateflag = self.ALUCC & decode_dict["DECC"]
+        alu_dict["updateflag"] = updateflag
+        alu_dict["npct"] = decode_dict["npct"]
+        
+        alu_dict["memode"] = decode_dict["memode"]
+        alu_dict["valD"] = decode_dict["valD"]
+        alu_dict["destE"] = decode_dict["destE"]
+        alu_dict["destM"] = decode_dict["destM"]
+        
+        # --- memory ---
+        mem_in_dict = { "valD": decode_dict["valD"], "memode": decode_dict["memode"], "valE": alu_dict["valE"] }
+
+        mem_dict = memory.memory(mem_in_dict, self.memory)
+        mem_dict["valD"] = decode_dict["valD"]
+        
+        mem_dict["npct"] = alu_dict["npct"]
+        mem_dict["destE"] = alu_dict["destE"]
+        mem_dict["destM"] = alu_dict["destM"]
+        mem_dict["updateflag"] = alu_dict["updateflag"]
+        
+        # --- write back ---
+        wb_in_dict = { "valE": mem_dict["valE"], "valM": mem_dict["valM"], "destE": decode_dict["destE"],
+                       "destM": decode_dict["destM"], "updateflag": updateflag }
+        
+        wb_dict = writeback.writeback(wb_in_dict, self.registerFile)
+        
+        wb_dict["npct"] = mem_dict["npct"]
+        
+        return { "fetch": fetch_dict, "decode": decode_dict, "alu": alu_dict, "memory": mem_dict, "wb": wb_dict }
     
     def forwardingUnit(self, fwdu):
         if self.MW["destM"] != 0xF:
@@ -155,3 +135,4 @@ class PIPE(cpumodel.CPUModel):
             if self.DA["srcD"] == self.AM["destE"]:
                 self.DA["valD"] = self.AM["valE"]
                 fwdu["alu"] = "valD"
+            
