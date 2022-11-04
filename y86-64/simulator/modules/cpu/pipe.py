@@ -33,26 +33,33 @@ class PIPE(cpumodel.CPUModel):
                 }
     
     def run(self):
-        pc = self.registerFile.readPC()
-        self.nowPC = pc
-        
-        if pc >= len(self.memory):
-            self.status |= 4
+        if self.stallcount:
+            self.stallcount += 1
+            fetch_dict = self.getDefaultResult()["fetch"]
             
         else:
-        # --- fetch ---
-            fetch_dict = fetch.fetch(self.memory, pc)
+            pc = self.registerFile.readPC()
+            self.nowPC = pc
             
-            self.status = self.status & 7
-    
-            # status update
-            self.status |= fetch_dict["status"]
-            
-            # PC pre-update
-            if not(self.status & 0x7):
-                self.registerFile.writePC(fetch_dict["pct"])
-            
-            fetch_dict["npct"] = self.nowPC
+            if pc >= len(self.memory):
+                self.status |= 4
+                
+            else:
+            # --- fetch ---
+                fetch_dict = fetch.fetch(self.memory, pc)
+                
+                self.status = self.status & 7
+        
+                # status update
+                self.status |= fetch_dict["status"]
+                
+                # PC pre-update
+                if not(self.status & 0x7):
+                    self.registerFile.writePC(fetch_dict["pct"])
+                
+                fetch_dict["npct"] = self.nowPC
+                
+                self.stallcount = fetch_dict["stallcount"]
         
         # --- decode --- 
         decode_dict = decode.decode(fetch_dict, self.registerFile)
