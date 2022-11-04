@@ -45,6 +45,7 @@
 |67|sar rA,rB|2B|rA = rB >> rA (arithmetics)|
 |68|cmp rA,rB|2B|null =  rB - rA|
 |69|test rA,rB|2B|null = rB & rA|
+|6A|not rA,rB|2B|rB = ~rA|
 |70|jmp const|9B|const로 점프|
 |71|jle const|9B|비교 값이 작거나 같을 때 점프|
 |72|jl const|9B|비교 값이 작을 때 점프|
@@ -61,14 +62,15 @@
 |-|.quad const|8B|64비트 정수를 프로그램 자체에 기록하는 키워드|
 
 ### 추가된 명령어 셋
-<pre>
-번호(hex)	명령어			길이	설명
--------------------------------------------------------------------
-64	shl rA,rB		2B	rB = rA << rB
-65	shr rA,rB		2B	rB = rA >> rB
-66	cmp rA,rB		2B	null =  rA - rB
-67	test rA,rB		2B	null = rA & rB
-</pre>
+|번호(hex)|명령어|길이|설명|
+|:-:|:--|:-:|:---|
+|64|or rA,rB|2B|rB = rB | rA|
+|65|shl rA,rB|2B|rB = rB << rA|
+|66|shr rA,rB|2B|rB = rB >> rA (logical)|
+|67|sar rA,rB|2B|rA = rB >> rA (arithmetics)|
+|68|cmp rA,rB|2B|null =  rB - rA|
+|69|test rA,rB|2B|null = rB & rA|
+|6A|not rA,rB|2B|rB = ~rA|
 
 ### 어셈블리 / 역 어셈블리 전용 명령어 셋
 실제 동작 시에는 역할이 없으나 역 어셈블리 시 사용되는 명령어.
@@ -117,4 +119,15 @@ variables:
     .elemrkq 2
     .quad 0x1
     .quad 0x2
+</pre>
+
+# 알려진 문제점
+## 시뮬레이터
+파이프라인 모델의 경우 memiotest.yps 예제를 포함한 일부 코드가 정상적으로 동작하지 않는 문제점이 존재함
+
+## 어셈블러
+다음과 같은 문법은 어셈블이 되지 않고 오류 메시지를 표출함
+<pre>
+    mrmovq label,%rdx # -> mrmovq label(%null),%rdx로 수정하여 작성할 것
+    rmmovq %rdx,label # -> mrmovq %rdx,label(%null)로 수정하여 작성할 것
 </pre>
