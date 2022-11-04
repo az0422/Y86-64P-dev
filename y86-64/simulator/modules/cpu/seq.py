@@ -23,18 +23,19 @@ class SEQ(cpumodel.CPUModel):
         
         if pc >= len(self.memory):
             self.status |= 4
-        
+            
+        else:
         # --- fetch ---
-        fetch_dict = fetch.fetch(self.memory, pc)
-        
-        self.status = self.status & 7
-
-        # status update
-        self.status |= fetch_dict["status"]
-        
-        # PC pre-update
-        if not(self.status & 0x7):
-            self.registerFile.writePC(fetch_dict["pct"])
+            fetch_dict = fetch.fetch(self.memory, pc)
+            
+            self.status = self.status & 7
+    
+            # status update
+            self.status |= fetch_dict["status"]
+            
+            # PC pre-update
+            if not(self.status & 0x7):
+                self.registerFile.writePC(fetch_dict["pct"])
         
         # --- decode --- 
         decode_dict = decode.decode(fetch_dict, self.registerFile)
