@@ -77,7 +77,7 @@ class PIPE(cpumodel.CPUModel):
             self.ALUCC = alu_dict["ALUCC"]
         
         updateflag = self.ALUCC & self.DA["DECC"]
-        alu_dict["updateflag"] = self.DA
+        alu_dict["updateflag"] = updateflag
         alu_dict["npct"] = self.DA["npct"]
         
         alu_dict["memode"] = self.DA["memode"]
