@@ -11,7 +11,7 @@ from modules.assembler import assembly, disassembly, Exceptions
 from modules.cpu import seq, pipe
 import flask
 
-SIMULATOR_VERSION = "0.3 Alpha-3-20221104r0"
+SIMULATOR_VERSION = "0.3 Alpha-2-20221106r0"
 
 def run(serverport = 5500, serverhost = "localhost"):
     server = flask.Flask("Y86-64+ server")
@@ -206,7 +206,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         id = flask.request.form["sim_id"]
 
         if id not in simulators.keys():
-            return flask.make_response("ID(%s) does NOT exist." % id, 400)
+            return "ID(%s) does NOT exist." % id, 400
         
         model = simulators[id]["model"]
         model_html = open("./view/%s-model.html" % (model), "r", encoding = "UTF-8").read()
@@ -224,7 +224,7 @@ def run(serverport = 5500, serverhost = "localhost"):
             return flask.Response(response, mimetype="application/json"), 200
         
         else:
-            return flask.make_response("snapshot was not found", 404)
+            return "snapshot was not found", 404
             
     @server.route("/alive", methods=["GET", "POST"])
     def action_alive():
@@ -233,7 +233,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         if id in simulators.keys():
             simulators[id]["life"] = 35
         else:
-            return flask.make_response("Simulator session was destroyed.", 400)
+            return "Simulator session was destroyed.", 400
         
         return "AOK", 200
     
@@ -276,7 +276,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         id = flask.request.form["sim_id"]
         
         if simulators[id]["sim"] == None:
-            return flask.make_response("Step run error.<br>The simulator is not initialized.", 400)
+            return "Step run error.<br>The simulator is not initialized.", 400
 
         simulator_dict = simulators[id]["sim"].run()
         
@@ -291,7 +291,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         id = flask.request.form["sim_id"]
         
         if simulators[id]["sim"] == None:
-            return flask.make_response("Run error.<br>The simulator is not initialized. ", 400)
+            return "Run error.<br>The simulator is not initialized. ", 400
 
         simulator_dict = simulators[id]["sim"].run()
 
@@ -332,7 +332,7 @@ def run(serverport = 5500, serverhost = "localhost"):
         id = flask.request.form["sim_id"]
         
         if id not in simulators.keys():
-            return flask.make_response("Run error.<br>The simulator is not initialized. ", 400)
+            return "Run error.<br>The simulator is not initialized. ", 400
         
         del simulators[id]
         

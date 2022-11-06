@@ -37,6 +37,7 @@ def fetch(memory, pct):
         rB = buff[1] & 0xF
         const = arr2const(buff[2:10])
         pct += 10
+        stallcount = 1
     
     # op
     elif opcode in (0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A):
@@ -67,6 +68,7 @@ def fetch(memory, pct):
     elif opcode in (0xA0, 0xB0):
         rA = buff[1] >> 4
         pct += 2
+        stallcount = 1
     
     else:
         err = 1

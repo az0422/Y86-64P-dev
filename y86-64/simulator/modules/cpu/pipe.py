@@ -2,6 +2,7 @@
 from modules.cpu.parts import register, fetch, decode, alu, memory, writeback
 from modules.cpu import cpumodel
 import copy
+from _ast import If
 
 class PIPE(cpumodel.CPUModel):
     def __init__(self, program, memsize):
@@ -33,9 +34,12 @@ class PIPE(cpumodel.CPUModel):
                 }
     
     def run(self):
+        # ===== clock up =====
         if self.stallcount:
-            self.stallcount += 1
+            self.stallcount -= 1
             fetch_dict = self.getDefaultResult()["fetch"]
+            fetch_dict["npct"] = self.nowPC
+            self.status |= 8
             
         else:
             pc = self.registerFile.readPC()
@@ -62,84 +66,67 @@ class PIPE(cpumodel.CPUModel):
                 self.stallcount = fetch_dict["stallcount"]
         
         # --- decode --- 
-        decode_dict = decode.decode(fetch_dict, self.registerFile)
-        decode_dict["npct"] = fetch_dict["npct"]
+        decode_dict = decode.decode(self.FD, self.registerFile)
+        decode_dict["npct"] = self.FD["npct"]
         
         # --- ALU ---
-        alu_dict = alu.ALU(decode_dict)
+        alu_dict = alu.ALU(self.DA)
         
         # CC Update
-        if decode_dict["ccupdate"]:
+        if self.DA["ccupdate"]:
             self.ALUCC = alu_dict["ALUCC"]
         
-        updateflag = self.ALUCC & decode_dict["DECC"]
-        alu_dict["updateflag"] = updateflag
-        alu_dict["npct"] = decode_dict["npct"]
+        updateflag = self.ALUCC & self.DA["DECC"]
+        alu_dict["updateflag"] = self.DA
+        alu_dict["npct"] = self.DA["npct"]
         
-        alu_dict["memode"] = decode_dict["memode"]
-        alu_dict["valD"] = decode_dict["valD"]
-        alu_dict["destE"] = decode_dict["destE"]
-        alu_dict["destM"] = decode_dict["destM"]
+        alu_dict["memode"] = self.DA["memode"]
+        alu_dict["valD"] = self.DA["valD"]
+        alu_dict["destE"] = self.DA["destE"]
+        alu_dict["destM"] = self.DA["destM"]
         
         # --- memory ---
-        mem_in_dict = { "valD": decode_dict["valD"], "memode": decode_dict["memode"], "valE": alu_dict["valE"] }
-
-        mem_dict = memory.memory(mem_in_dict, self.memory)
-        mem_dict["valD"] = decode_dict["valD"]
+        mem_dict = memory.memory(self.AM, self.memory)
+        mem_dict["valD"] = self.AM["valD"]
         
-        mem_dict["npct"] = alu_dict["npct"]
-        mem_dict["destE"] = alu_dict["destE"]
-        mem_dict["destM"] = alu_dict["destM"]
-        mem_dict["updateflag"] = alu_dict["updateflag"]
+        mem_dict["npct"] = self.AM["npct"]
+        mem_dict["destE"] = self.AM["destE"]
+        mem_dict["destM"] = self.AM["destM"]
+        mem_dict["updateflag"] = self.AM["updateflag"]
         
         # --- write back ---
-        wb_in_dict = { "valE": mem_dict["valE"], "valM": mem_dict["valM"], "destE": decode_dict["destE"],
-                       "destM": decode_dict["destM"], "updateflag": updateflag }
+        wb_dict = writeback.writeback(self.MW, self.registerFile)
         
-        wb_dict = writeback.writeback(wb_in_dict, self.registerFile)
+        wb_dict["npct"] = self.MW["npct"]
         
-        wb_dict["npct"] = mem_dict["npct"]
+        # ===== clock down =====
+        self.FD = fetch_dict
+        self.DA = decode_dict
+        self.AM = alu_dict
         
-        return { "fetch": fetch_dict, "decode": decode_dict, "alu": alu_dict, "memory": mem_dict, "wb": wb_dict }
-    
-    def forwardingUnit(self, fwdu):
-        if self.MW["destM"] != 0xF:
-            if self.DA["srcA"] == self.MW["destM"]:
-                self.DA["valA"] = self.MW["valM"]
-                fwdu["mem"] = "valA"
-                
-            if self.DA["srcB"] == self.MW["destM"]:
-                self.DA["valB"] = self.MW["valM"]
-                fwdu["mem"] = "valB"
-                
-            if self.DA["srcD"] == self.MW["destM"]:
-                self.DA["valD"] = self.MW["valM"]
-                fwdu["mem"] = "valD"
+        if alu_dict["destE"] != 0xF:
+            if self.DA["srcA"] == alu_dict["destE"]:
+                self.DA["valA"] = alu_dict["valE"]
+            elif self.DA["srcB"] == alu_dict["destE"]:
+                self.DA["valB"] = alu_dict["valE"]
+            elif self.DA["srcD"] == alu_dict["destE"]:
+                self.DA["valD"] = alu_dict["valE"]
+
+        self.MW = mem_dict
         
-        if self.MW["destE"] != 0xF and self.MW["updateflag"]:
-            if self.DA["srcA"] == self.MW["destE"]:
-                self.DA["valA"] = self.MW["valE"]
-                fwdu["malu"] = "valA"
-                
-            if self.DA["srcB"] == self.MW["destE"]:
-                self.DA["valB"] = self.MW["valE"]
-                fwdu["malu"] = "valB"
-                
-            if self.DA["srcD"] == self.MW["destE"]:
-                self.DA["valD"] = self.MW["valE"]
-                fwdu["malu"] = "valD"
+        if mem_dict["destE"] != 0xF:
+            if self.DA["srcA"] == mem_dict["destE"]:
+                self.DA["valA"] = mem_dict["valE"]
+            elif self.DA["srcB"] == mem_dict["destE"]:
+                self.DA["valB"] = mem_dict["valE"]
+            elif self.DA["srcD"] == mem_dict["destE"]:
+                self.DA["valD"] = mem_dict["valE"]
+        if mem_dict["destM"] != 0xF:
+            if self.DA["srcA"] == mem_dict["destM"]:
+                self.DA["valA"] = mem_dict["valM"]
+            elif self.DA["srcB"] == mem_dict["destM"]:
+                self.DA["valB"] = mem_dict["valM"]
+            elif self.DA["srcD"] == mem_dict["destM"]:
+                self.DA["valD"] = mem_dict["valM"]
         
-        # ALU
-        if self.AM["destE"] != 0xF and self.AM["updateflag"]:
-            if self.DA["srcA"] == self.AM["destE"]:
-                self.DA["valA"] = self.AM["valE"]
-                fwdu["alu"] = "valA"
-                
-            if self.DA["srcB"] == self.AM["destE"]:
-                self.DA["valB"] = self.AM["valE"]
-                fwdu["alu"] = "valB"
-                
-            if self.DA["srcD"] == self.AM["destE"]:
-                self.DA["valD"] = self.AM["valE"]
-                fwdu["alu"] = "valD"
-            
+        return { "fetch": self.FD, "decode": self.DA, "alu": self.AM, "memory": self.MW, "wb": wb_dict }
