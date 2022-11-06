@@ -35,6 +35,12 @@ class PIPE(cpumodel.CPUModel):
     
     def run(self):
         # ===== clock up =====
+        # --- write back ---
+        wb_dict = writeback.writeback(self.MW, self.registerFile)
+        
+        wb_dict["npct"] = self.MW["npct"]
+        
+        # --- fetch block ---
         if self.stallcount:
             self.stallcount -= 1
             fetch_dict = self.getDefaultResult()["fetch"]
@@ -93,11 +99,6 @@ class PIPE(cpumodel.CPUModel):
         mem_dict["destE"] = self.AM["destE"]
         mem_dict["destM"] = self.AM["destM"]
         mem_dict["updateflag"] = self.AM["updateflag"]
-        
-        # --- write back ---
-        wb_dict = writeback.writeback(self.MW, self.registerFile)
-        
-        wb_dict["npct"] = self.MW["npct"]
         
         # ===== clock down =====
         self.FD = fetch_dict
