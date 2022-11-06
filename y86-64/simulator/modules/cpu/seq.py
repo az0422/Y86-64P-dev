@@ -12,7 +12,7 @@ class SEQ(cpumodel.CPUModel):
         return { "fetch": { "opcode": 0, "rA": 0xF, "rB": 0xF, "const": 0x00, "buff": bytearray(16), "pct": 0, "jmpc": 0x00, "status": 0, "stallcount": 0 }, 
                  "decode": { "valA": 0, "valB": 0, "valD": 0, "destE": 0xF, "destM": 0xF, "srcA": 0xF, "srcB": 0xF , "srcD": 0xF, "DECC": 7,
                  "alumode": 0, "memode": 0, "ccupdate": 0, "opcode": 0, "rA": 0xF, "rB": 0xF, "const": 0 }, 
-                 "alu": { "valE": 0, "ALUCC": 7, "valA": 0, "valB": 0, "alumode": 0, "updateflag": 1 }, 
+                 "alu": { "valE": 0, "ALUCC": 7, "valA": 0, "valB": 0, "alumode": 0, "updateflag": 1, "DECC": 7}, 
                  "memory": { "valE": 0, "valM": 0, "memerr": 0, "memode": 0, "valD": 0 }, 
                  "wb": { "destE": 0xF, "destM": 0xF, "valE": 0, "valM": 0, "updateflag": 1 }
                 }
@@ -49,6 +49,7 @@ class SEQ(cpumodel.CPUModel):
         
         updateflag = self.ALUCC & decode_dict["DECC"]
         alu_dict["updateflag"] = updateflag
+        alu_dict["DECC"] = decode_dict["DECC"]
         
         # --- memory ---
         mem_in_dict = { "valD": decode_dict["valD"], "memode": decode_dict["memode"], "valE": alu_dict["valE"] }

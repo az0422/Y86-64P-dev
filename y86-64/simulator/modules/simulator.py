@@ -11,7 +11,7 @@ from modules.assembler import assembly, disassembly, Exceptions
 from modules.cpu import seq, pipe
 import flask
 
-SIMULATOR_VERSION = "0.3 Alpha-2-20221106r3"
+SIMULATOR_VERSION = "0.3 Alpha-2-20221106r4"
 
 def run(serverport = 5500, serverhost = "localhost"):
     server = flask.Flask("Y86-64+ server")
@@ -128,10 +128,11 @@ def run(serverport = 5500, serverhost = "localhost"):
         
         alucc = result_dict["alu"]["ALUCC"]
         decc = result_dict["decode"]["DECC"]
+        decca = result_dict["alu"]["DECC"]
         
         result_dict["alu"]["ALUCC"] = "%02X (ZF: %d, SF: %d, OF: %d, eql: %d, grt: %d, les: %d)" % (alucc, alucc >> 5, alucc >> 4 & 1,
                                                                                                alucc >> 3 & 1, alucc >> 2 & 1, alucc >> 1 & 1, alucc & 1)
-        result_dict["alu"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
+        result_dict["alu"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decca, decca >> 2, decca >> 1 & 1, decca & 1)
         result_dict["decode"]["DECC"] = "%X (eql: %d, grt: %d, les: %d)" % (decc, decc >> 2, decc >> 1 & 1, decc & 1)
         
         assembly_str = disassemblyDictToStr(pc_list, simulator)
