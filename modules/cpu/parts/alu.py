@@ -6,65 +6,59 @@
 # - valB: long
 # - alumode: int
 #
-def ALU(in_dict):
-    alumode = in_dict["alumode"]
-    
-    result = {}
-    
-    valA = in_dict["valA"]
-    valB = in_dict["valB"]
+def ALU(buff):
+    alu = buff["alumode"]
+
+    valA = buff["valA"]
+    valB = buff["valB"]
     valE = 0x00
     
     les = 0
     eql = 0
     grt = 0
+
+    def addq():
+        return valB + valA
     
-    # addq
-    if alumode == 0:
-        valE = valB + valA
+    def subq():
+        return valB - valA
     
-    # subq
-    elif alumode == 1:
-        valE = valB - valA
+    def andq():
+        return valB & valA
     
-    # andq
-    elif alumode == 2:
-        valE = valB & valA
+    def xorq():
+        return valB ^ valA
     
-    # xorq
-    elif alumode == 3:
-        valE = valB ^ valA
+    def orq():
+        return valB | valA
     
-    # or
-    elif alumode == 4:
-        valE = valB | valA
-    
-    # shl
-    elif alumode == 5:
+    def shl():
         if valA > 64:
-            valE = 0
+            return 0
         else:
-            valE = valB << valA
+            return valB << valA
     
-    # shr
-    elif alumode == 6:
+    def shr():
         if valA > 64:
-            valE = 0
+            return 0
         else:
-            valE = valB >> valA
+            return valB >> valA
     
-    # sar
-    elif alumode == 7:
+    def sar():
         if valA > 64:
-            valE = -1
+            return 0
         else:
             valE = valB >> valA
             msb = valB >> 63
             
             if msb == 1:
                 mask = -1 << (64 - valA)
-                valE = valE | mask
+                return valE | mask
+            
+            return valE
     
+    valE = (addq, subq, andq, xorq, orq, shl, shr, sar)[alu]()
+
     # limit 64bit
     valE = valE & 0xFFFFFFFFFFFFFFFF
     
@@ -75,11 +69,13 @@ def ALU(in_dict):
     # set flags
     ZF = int(valE == 0x00)
     SF = valE >> 63
-    OF = (~valASF & ~valBSF & SF) | (valASF & valBSF & ~SF) if alumode == 0 else 0
+    OF = (~valASF & ~valBSF & SF) | (valASF & valBSF & ~SF) if alu == 0 else 0
     
     # set CC flag
     eql = ZF
     les = SF ^ OF
     grt = ~ZF & ~(SF ^ OF) & 0x1 
     
-    return { "valE": valE, "ALUCC": (ZF << 5) | (SF << 4) | (OF << 3) | (eql << 2) | (grt << 1) | les, "valA": valA, "valB": valB, "alumode": alumode }
+    return { "result": {"valE": valE, "cc": ZF << 5 | SF << 4 | OF << 3 | eql << 2 | les << 1 | grt},
+             "pass": {"valD": buff["valD"], "destE": buff["destE"], "destM": buff["destM"], "memode": buff["memode"]}, 
+             "buff": buff}

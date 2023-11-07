@@ -29,7 +29,7 @@ D 타입: icode:ifun, const[8]
 64	or rA,rB			2B	rB = rB | rA
 65	shl rA,rB			2B	rB = rB << rA
 66	shr rA,rB			2B	rB = rB >> rA (logical)
-68	sar	rA,rB			2B	rA = rB >> rA (arithmetics)
+67	sar	rA,rB			2B	rA = rB >> rA (arithmetics)
 68	cmp rA,rB			2B	null =  rB - rA
 69	test rA,rB			2B	null = rB & rA
 6A	not	rA,rB			2B	rB = ~rA
