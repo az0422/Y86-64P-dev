@@ -1,77 +1,29 @@
 # -*- encoding:UTF-8 -*-
 
-def fetch(memory, pct):
-    buff = memory[pct:pct + 16]
-    
-    opcode = buff[0]
-    const = 0x00
-    rA = 0xF
-    rB = 0xF
-    
-    jmpc = 0
+def type_a(buff):
+    return buff[0], None, None, None, 1
 
-    err = 0
-    halt = 0
-    nop = 0
+def type_b(buff):
+    return buff[0], buff[1] >> 4, buff[1] & 0xF, None, 2
 
-    stallcount = 0
-    
-    # halt
-    if opcode == 0x00:
-        halt = 1
-    
-    # nop
-    elif opcode == 0x10:
-        nop = 1
-        pct += 1
-    
-    # cmov--
-    elif opcode in (0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26):
-        rA = buff[1] >> 4
-        rB = buff[1] & 0xF
-        pct += 2
-    
-    # irmovq, rmmovq, mrmovq
-    elif opcode in (0x30, 0x40, 0x50):
-        rA = buff[1] >> 4
-        rB = buff[1] & 0xF
-        const = arr2const(buff[2:10])
-        pct += 10
-    
-    # op
-    elif opcode in (0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A):
-        rA = buff[1] >> 4
-        rB = buff[1] & 0xF
-        pct += 2
-    
-    # j--
-    elif opcode in (0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76):
-        const = arr2const(buff[1:9])
-        jmpc = const
-        pct += 9
+def type_c(buff):
+    return buff[0], buff[1] >> 4, buff[1] & 0xF, arr2const(buff[2:10]), 10
 
-        stallcount = 4
-    
-    # call
-    elif opcode == 0x80:
-        jmpc = pct + 9
-        pct = arr2const(buff[1:9])
-    
-    # ret
-    elif opcode == 0x90:
-        pct += 1
+def type_d(buff):
+    return buff[0], None, None, arr2const(buff[1:9]), 9
 
-        stallcount = 4
-    
-    # push, pop
-    elif opcode in (0xA0, 0xB0):
-        rA = buff[1] >> 4
-        pct += 2
-    
-    else:
-        err = 1
-        
-    return { "opcode": opcode, "rA": rA, "rB": rB, "const": const, "buff": buff, "pct": pct, "jmpc": jmpc, "status": (nop << 3 | halt << 1 | err), "stallcount": stallcount }
+IFUNCTION = { 0x00: type_a, 0x10: type_a, 0x20: type_b, 0x30: type_c,
+              0x40: type_c, 0x50: type_c, 0x60: type_b, 0x70: type_d,
+              0x80: type_d, 0x90: type_a, 0xA0: type_b, 0xB0: type_b }
+
+def fetch(memory, pc):
+    buff = memory[pc:pc + 16]
+    ifun = buff[0] & 0xF0
+
+    op, rA, rB, const, length = IFUNCTION[ifun](buff)
+
+    return {"result": {"op": op, "rA": rA, "rB": rB, "const": const, "length": length, "nxpc": pc + length, "pc": pc},
+            "buff": {"buff": buff, "pc": pc}}
 
 def arr2const(arr):
     const = 0

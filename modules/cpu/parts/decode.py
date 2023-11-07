@@ -14,6 +14,13 @@ ALUMODE = [0, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3]
 # - jmpc: long
 #
 
+def decode(buff, resigter):
+    opcode = buff["op"]
+    rA = buff["rA"]
+    rB = buff["rB"]
+    const = buff["const"]
+
+
 def decode(in_dict, register):
     opcode = in_dict["opcode"]
     rA = in_dict["rA"]
