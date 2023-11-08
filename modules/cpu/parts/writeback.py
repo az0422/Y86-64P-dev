@@ -1,16 +1,16 @@
 # -*- encoding:UTF-8 -*-
 
-def writeback(in_dict, register):
+def writeback(buff, register):
     # flag
-    updateflag = in_dict["updateflag"]
+    updateflag = buff["updateflag"]
     
     # destinations
-    destE = in_dict["destE"]
-    destM = in_dict["destM"]
+    destE = buff["destE"]
+    destM = buff["destM"]
     
     # results
-    valE = in_dict["valE"]
-    valM = in_dict["valM"]
+    valE = buff["valE"]
+    valM = buff["valM"]
     
     # write 
     if updateflag:
@@ -19,4 +19,5 @@ def writeback(in_dict, register):
     else:
         register.write(0xF, destM, valE, valM)
     
-    return { "destE": destE, "destM": destM, "valE": valE, "valM": valM, "updateflag": updateflag }
+    return { "result": {},
+        "buff": buff.copy() }

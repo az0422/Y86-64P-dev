@@ -28,9 +28,11 @@ class CPUModel():
         pass
     
     def toStringMemory(self):
-        str = ""
+        str_list = []
         for i in self.memory:
-            str += "%X" % i
+            str_list.appen("%X" % i)
+        
+        return "".join(str_list)
     
     def getRegisters(self):
         return self.registerFile.registers

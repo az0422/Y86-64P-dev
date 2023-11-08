@@ -1,5 +1,22 @@
 # -*- encoding:UTF-8 -*-
 
+VALIDATE_OP = (2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+               0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+               1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,)
+
 def arr2const(arr):
     const = 0
     
@@ -29,8 +46,12 @@ IFUNCTION = (
 def fetch(memory, pc):
     buff = memory[pc:pc + 16]
     ifun = buff[0] >> 4
+    op = buff[0]
 
-    op, rA, rB, const, length = IFUNCTION[ifun](buff)
+    status = VALIDATE_OP[op]
+
+    if not status & 0x9: op, rA, rB, const, length = IFUNCTION[ifun](buff)
+    else: rA, rB, const, length = 0xF, 0xF, 0x00, 0
 
     nxpc = pc + length
 
@@ -42,6 +63,5 @@ def fetch(memory, pc):
         nxpc = const
         const = pc + length
 
-    return {"result": {"op": op, "rA": rA, "rB": rB, "const": const, "length": length, "nxpc": nxpc, "pc": pc},
+    return {"result": {"op": op, "rA": rA, "rB": rB, "const": const, "length": length, "nxpc": nxpc, "pc": pc, "status": status},
             "buff": {"buff": buff, "pc": pc}}
-

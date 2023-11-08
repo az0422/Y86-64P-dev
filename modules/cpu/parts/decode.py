@@ -203,7 +203,7 @@ def decode(buff, register):
     
     OP_FUNCTIONS = (op_none, op_move, op_irmove, op_rmmove, op_mrmove, op_op_a, op_op_b, op_op_c, op_jump, op_call, op_ret, op_push, op_pop)
     OP_FUNCTIONS_INDEX = (0, 0, 1, 2, 3, 4, 5, 8, 9, 10, 11, 12)
-    OP_FUNCTION_CALC_SET = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2]
+    OP_FUNCTION_CALC_SET = (0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2)
 
     op_index = OP_FUNCTIONS_INDEX[opcode >> 4] if opcode >> 4 != 0x6 else OP_FUNCTIONS_INDEX[6] + OP_FUNCTION_CALC_SET[opcode & 0x7]
 
@@ -212,4 +212,4 @@ def decode(buff, register):
     return {"result": {"valA": valA, "valB": valB, "valD": valD, "srcA": srcA, "srcB": srcB, "srcD": srcD,
                        "destE": destE, "destM": destM, "alumode": alu, "memode": memode, "decc": decc, "ccupdate": ccupdate,
                        "pc": buff["nxpc"]},
-            "buff": buff}
+            "buff": buff.copy()}

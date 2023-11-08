@@ -7,13 +7,13 @@
 # - memode: int
 #
 
-def memory(in_dict, memory):
-    memode = in_dict["memode"]
+def memory(buff, memory):
+    memode = buff["memode"]
     
-    valE = in_dict["valE"]
+    valE = buff["valE"]
     
     valM = 0x00
-    valD = in_dict["valD"]
+    valD = buff["valD"]
     memerr = 0
     
     # pass
@@ -43,7 +43,9 @@ def memory(in_dict, memory):
         except IndexError:
             memerr = 1
     
-    return { "valE": valE, "valM": valM, "memerr": memerr, "memode": memode }
+    return { "result": {"status": memerr, "valE": valE, "valM": valM},
+             "pass": {"destE": buff["destE"], "destM": buff["destM"], "destE update": buff["destE update"]},
+             "buff": buff.copy() }
     
 def arr2const(arr):
     const = 0
