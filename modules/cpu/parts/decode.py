@@ -75,7 +75,7 @@ def decode(buff, register):
         )
     
     def op_mrmove():
-        valA, valB = register.read(0xF, buff[rB])
+        valA, valB = register.read(0xF, rB)
         valA = const
         destM = rA
         srcA = 0xF

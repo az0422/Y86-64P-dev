@@ -288,8 +288,8 @@
            	function startSimulator() {
            		var xhr = new XMLHttpRequest();
            		
-           		xhr.open("POST", "/start", true);
-            	xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+           		xhr.open("POST", "/", true);
+            	xhr.setRequestHeader("Content-Type", "application/json");
             	
             	var memsize = parseInt(document.getElementById("memsize").value);
             	
@@ -308,8 +308,14 @@
             	case "K":
             		memsize *= 1024;
             	}
+
+                var send_obj = {
+                    "memsize": memsize,
+                    "model": document.getElementById("model-select").value,
+                    "function": "start"
+                }
             	
-            	xhr.send("memsize=" + memsize + "&model=" + document.getElementById("model-select").value);
+            	xhr.send(JSON.stringify(send_obj));
             	
             	xhr.onload = function() {
             		var response_obj = JSON.parse(xhr.responseText)

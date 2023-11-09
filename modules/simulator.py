@@ -13,6 +13,96 @@ import flask
 
 SIMULATOR_VERSION = "0.2 Alpha-1-20221101r5"
 
+def run(serverport=5500, serverhost="localhost"):
+    server = flask.Flask("Y86-64+ server")
+
+    examples = os.listdir("./examples")
+    examples.sort()
+
+    simulators = {}
+
+    def memoryArrToStr(rsp, rbp, mem_info, simulator):
+        str_list = []
+
+        for i in range(len(simulator["sim"].memory) >> 3):
+            mem_str = "".join(["%02X" % (simulator["sim"].memory[(i << 3) + j]) for j in range(8)])
+
+            str_list.append("")
+            str_list[-1] = "&nbsp;%06X: %s&nbsp;" % (i << 3, mem_str)
+            
+            # read
+            if mem_info[0] == 1 and mem_info[1] >> 3 == i:
+                str_list[-1] = "<span class=\"read_point\"> %s R&nbsp;</span>" % (str_list[-1])
+            
+            # write
+            elif mem_info[0] == 2 and mem_info[1] >> 3 == i:
+                str_list[-1] = "<span class=\"write_point\"> %s W&nbsp;</span>" % (str_list[-1])
+            
+            # stack point
+            if rsp >> 3 == i:
+                str_list[-1] = "<span class=\"rsp_point\">%s RSP&nbsp;</span>" % (str_list[-1])
+
+            # stack base point
+            if rbp >> 3 == i:
+                str_list[-1] = "<span class=\"rbp_point\"> %s RBP&nbsp;</span>" % (str_list[-1])
+            
+            str_list.append("<br>")
+        
+        return "".join(str_list)
+    
+    # ------------------------------------------------------------------------------------------
+
+    def action_init():
+        simulator_body = open("./view/main.html", "r", encoding = "UTF-8").read().replace("    ", "").replace("\t", "")
+        response_body = simulator_body.replace("%simulator-version%", SIMULATOR_VERSION)
+        response_body = response_body.replace("%model-script-seq%", open("./view/seq-model.js", "r", encoding = "UTF-8").read())
+        response_body = response_body.replace("%model-script-pipe%", open("./view/pipe-model.js", "r", encoding = "UTF-8").read())
+        
+        examples_list = []
+        
+        for i, example in enumerate(examples):
+            examples_list.append("<li onclick=\"loadExampleCode(" + str(i) + ")\"> %s </li>" % example)
+        
+        response_body = response_body.replace("%example-list%", "\n".join(examples_list))
+        
+        return response_body, 200
+    
+    def action_start(request):
+        memsize = request["memsize"]
+        model = request["model"]
+        
+        id = str(uuid.uuid4())
+        
+        simulators[id] = {
+            "memsize": memsize, "model": model, "life": 35, "asm flag": False, "asm list": {}, "sim": None, "snapshot": {}
+        }
+        
+        model_html = open("./view/%s-model.html" % (model)).read()
+        model_js = open("./view/%s-model.js" % (model)).read()
+        
+        model_name = { "seq": "sequential", "pipe": "pipeline" }[model]
+        
+        return flask.jsonify({ "memory": "Waiting for starting", "model_html": model_html,
+                               "model_js": model_js, "model_name": model_name,
+                               "sim_id": id }), 200
+    
+    FUNCTIONS = {"start": action_start, }
+
+    # ------------------------------------------------------------------------------------------
+
+    @server.route("/", methods=["GET", "POST"])
+    def init():
+        if not flask.request.is_json:
+            return action_init()
+        
+        request = flask.request.get_json()
+        function = request["function"]
+        
+        return FUNCTIONS[function](request)
+    
+    server.run(port=serverport, host=serverhost)
+
+'''
 def run(serverport = 5500, serverhost = "localhost"):
     server = flask.Flask("Y86-64+ server")
     examples = os.listdir("./examples")
@@ -339,3 +429,4 @@ def run(serverport = 5500, serverhost = "localhost"):
         return "This session was terminated.", 200
         
     server.run(port = serverport, host = serverhost)
+'''

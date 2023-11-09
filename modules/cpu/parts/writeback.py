@@ -2,7 +2,7 @@
 
 def writeback(buff, register):
     # flag
-    updateflag = buff["updateflag"]
+    updateflag = buff["destE update"]
     
     # destinations
     destE = buff["destE"]
